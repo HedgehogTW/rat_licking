@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -60,18 +61,20 @@ def write_features(start, end, fps_out):
     ser_nonzero_p5 = pd.Series(data[start:end+1, 2], idx)
     freqStr = '{0:d}L'.format(int(1000 /fps_out))
     time_clip = pd.timedelta_range(0, periods=end-start+1, freq=freqStr)
+    
     start_time = '0:0:{}'.format(start/(fps_out*2))
     freqStr = '{0:d}L'.format(int(1000 /(fps_out*2)))
     time_video = pd.timedelta_range(start_time, periods=end-start+1, freq=freqStr)
+    
     ser_time_clip = pd.Series(time_clip, idx)
     ser_time_video = pd.Series(time_video, idx)
     df = pd.DataFrame({'nozeroP1':ser_nonzero_p1, 
                        'nozeroP5':ser_nonzero_p5,
-                       'clip_time':ser_time_clip,
-                       'video_time':ser_time_video})
+                       'tm_clip':ser_time_clip,
+                       'tm_video':ser_time_video})
     
     outcsvName = '../../tmp/f%05d.csv' % start
-    df.to_csv(outcsvName)
+    df.to_csv(outcsvName, date_format='%H:%M:%S.%3L')
 
 
 thMin = 0.001
@@ -159,5 +162,5 @@ for i in range(labelLick1.size):
 
 pbar.finish()      
 print('extract_clips: ', extract_clips)
-
+sys.stdout.write('\a')
 

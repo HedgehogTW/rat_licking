@@ -4,9 +4,10 @@ Spyder Editor
 
 This is a temporary script file.
 """
-
+import sys
 import os.path as path
 import numpy as np
+import pandas as pd
 import cv2
 from time import time
 
@@ -58,8 +59,8 @@ def frame_diff(video_filename, mid_line, showVideo = False):
     frame_p2 = frame_p2.astype(np.int16)
     frame_p1 = frame_p1.astype(np.int16)
    
-    resultL = np.full((frame_count, 11), -1, np.float32)
-    resultR = np.full((frame_count, 11), -1, np.float32)
+    resultL = np.full((frame_count, 10), -1, np.float32)
+    resultR = np.full((frame_count, 10), -1, np.float32)
 
     resultL[:5, :] = 0
     resultR[:5, :] = 0
@@ -148,30 +149,28 @@ def frame_diff(video_filename, mid_line, showVideo = False):
         nonzero_p2R = np.count_nonzero(diff_p2R > MIN_DIFF) / sizeR
         nonzero_p1R = np.count_nonzero(diff_p1R > MIN_DIFF) / sizeR
         
-        resultL[frameNum, 0] = frameNum
-        resultL[frameNum, 1] = diffSum_p1L
-        resultL[frameNum, 2] = diffSum_p2L
-        resultL[frameNum, 3] = diffSum_p3L
-        resultL[frameNum, 4] = diffSum_p4L
-        resultL[frameNum, 5] = diffSum_p5L
-        resultL[frameNum, 6] = nonzero_p1L
-        resultL[frameNum, 7] = nonzero_p2L
-        resultL[frameNum, 8] = nonzero_p3L
-        resultL[frameNum, 9] = nonzero_p4L
-        resultL[frameNum, 10] = nonzero_p5L
-          
-        resultR[frameNum, 0] = frameNum
-        resultR[frameNum, 1] = diffSum_p1R
-        resultR[frameNum, 2] = diffSum_p2R
-        resultR[frameNum, 3] = diffSum_p3R
-        resultR[frameNum, 4] = diffSum_p4R
-        resultR[frameNum, 5] = diffSum_p5R
-        resultR[frameNum, 6] = nonzero_p1R
-        resultR[frameNum, 7] = nonzero_p2R
-        resultR[frameNum, 8] = nonzero_p3R
-        resultR[frameNum, 9] = nonzero_p4R
-        resultR[frameNum, 10] = nonzero_p5R
- 
+        resultL[frameNum, 0] = diffSum_p1L
+        resultL[frameNum, 1]= diffSum_p2L
+        resultL[frameNum, 2]= diffSum_p3L
+        resultL[frameNum, 3]= diffSum_p4L
+        resultL[frameNum, 4]= diffSum_p5L
+        resultL[frameNum, 5]= nonzero_p1L
+        resultL[frameNum, 6]= nonzero_p2L
+        resultL[frameNum, 7]= nonzero_p3L
+        resultL[frameNum, 8]= nonzero_p4L
+        resultL[frameNum, 9] = nonzero_p5L
+                          
+        resultR[frameNum, 0] = diffSum_p1R
+        resultR[frameNum, 1]= diffSum_p2R
+        resultR[frameNum, 2]= diffSum_p3R
+        resultR[frameNum, 3]= diffSum_p4R
+        resultR[frameNum, 4]= diffSum_p5R
+        resultR[frameNum, 5]= nonzero_p1R
+        resultR[frameNum, 6]= nonzero_p2R
+        resultR[frameNum, 7]= nonzero_p3R
+        resultR[frameNum, 8]= nonzero_p4R
+        resultR[frameNum, 9] = nonzero_p5R
+                          
         frame_p5 = frame_p4.copy()       
         frame_p4 = frame_p3.copy()
         frame_p3 = frame_p2.copy()
@@ -186,21 +185,34 @@ def frame_diff(video_filename, mid_line, showVideo = False):
         
     pbar.finish()    
     
-#    vidw.release()
-    mask = resultL[:,0] >=0 
-    outputL = resultL[mask]
-    outputR = resultR[mask]
+#    mask = resultL[:, 0] >=0
+    outputL = resultL[:frameNum]
+    outputR = resultR[:frameNum]
     
-    headerStr = 'frame_no, diffSum_p1, diffSum_p2, diffSum_p3, diffSum_p4,\
-    diffSum_p5, nonzero_p1, nonzero_p2, nonzero_p3, nonzero_p4, nonzero_p5'
+    header = ['diffSum_p1', 'diffSum_p2', 'diffSum_p3', 
+              'diffSum_p4', 'diffSum_p5', 'nonzero_p1', 'nonzero_p2', 
+              'nonzero_p3', 'nonzero_p4', 'nonzero_p5']
+    df_left = pd.DataFrame(outputL, columns = header )
+    df_right = pd.DataFrame(outputR, columns = header )
+   
+    freqStr = '{0:d}L'.format(int(1000 /fps))
+    video_time = pd.timedelta_range('0:0:0', periods=frameNum, freq=freqStr)
+    
+    ser_time = pd.Series(video_time)   
+    df_left.insert(len(df_left.columns), 'time', ser_time)
+    df_right.insert(len(df_right.columns), 'time', ser_time)
     
     (root_name, ext) = path.splitext(video_filename)
     (root_name, ext) = path.splitext(root_name)
     out_nameL = '{}_L.csv'.format(root_name)
     out_nameR = '{}_R.csv'.format(root_name)
+    
+    df_left.to_csv(out_nameL)
+    df_right.to_csv(out_nameR)
+    
 #    out_nameR = root_name + '_R.csv'
-    np.savetxt(out_nameL, outputL, fmt = '%.4f', delimiter=',', header = headerStr)
-    np.savetxt(out_nameR, outputR, fmt = '%.4f', delimiter=',', header = headerStr)
+#    np.savetxt(out_nameL, outputL, fmt = '%.4f', delimiter=',', header = headerStr)
+#    np.savetxt(out_nameR, outputR, fmt = '%.4f', delimiter=',', header = headerStr)
     print('output: {}'.format(out_nameL))
     print('output: {}'.format(out_nameR))
     return (fps, width, height)
@@ -212,4 +224,5 @@ video_file = '../../image_data/ratavi_3/930219-B-car-3-1d.avi.mkv'
 frame_diff(video_file, 183, showVideo=False)
 t2 = time()
 print('Computation time takes %f seconds' % (t2-t1))
+sys.stdout.write('\a')
 
