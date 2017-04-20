@@ -54,17 +54,28 @@ def write_video(start, end, fps_out):
         print('output video error: ' , outName)
                   
 
-def write_features(start, end, fps_out):
-#    print(start, end)
+def write_features(start, end, fps_out):   
+    sec = start /fps
+    mm = sec / 60
+    hh = int(mm // 60)
+    a = sec - mm * 60
+    if a < 0.00001:
+        ss = 0
+    else:
+        ss = a
+    minutes = int(mm - hh * 60)
+    
     idx = pd.Index(data[start:end+1, 0], dtype='int64')
     ser_nonzero_p1 = pd.Series(data[start:end+1, 1], idx)
     ser_nonzero_p5 = pd.Series(data[start:end+1, 2], idx)
     freqStr = '{0:d}L'.format(int(1000 /fps_out))
-    time_clip = pd.timedelta_range(0, periods=end-start+1, freq=freqStr)
+    time_clip = pd.date_range(0, periods=end-start+1, freq=freqStr)
     
-    start_time = '0:0:{}'.format(start/(fps_out*2))
+    start_time = '2000-01-01 {}:{}:{}'.format(hh, minutes, ss)
+    
+#    print(start_time, sec, mm)
     freqStr = '{0:d}L'.format(int(1000 /(fps_out*2)))
-    time_video = pd.timedelta_range(start_time, periods=end-start+1, freq=freqStr)
+    time_video = pd.date_range(start_time, periods=end-start+1, freq=freqStr)
     
     ser_time_clip = pd.Series(time_clip, idx)
     ser_time_video = pd.Series(time_video, idx)
@@ -74,7 +85,8 @@ def write_features(start, end, fps_out):
                        'tm_video':ser_time_video})
     
     outcsvName = '../../tmp/f%05d.csv' % start
-    df.to_csv(outcsvName, date_format='%H:%M:%S.%3L')
+    df.to_csv(outcsvName, date_format='%H:%M:%S.%f')
+# https://docs.python.org/2/library/datetime.html#strftime-strptime-behavior
 
 
 thMin = 0.001

@@ -196,7 +196,7 @@ def frame_diff(video_filename, mid_line, showVideo = False):
     df_right = pd.DataFrame(outputR, columns = header )
    
     freqStr = '{0:d}L'.format(int(1000 /fps))
-    video_time = pd.timedelta_range('0:0:0', periods=frameNum, freq=freqStr)
+    video_time = pd.date_range(0, periods=frameNum, freq=freqStr)
     
     ser_time = pd.Series(video_time)   
     df_left.insert(len(df_left.columns), 'time', ser_time)
@@ -207,8 +207,9 @@ def frame_diff(video_filename, mid_line, showVideo = False):
     out_nameL = '{}_L.csv'.format(root_name)
     out_nameR = '{}_R.csv'.format(root_name)
     
-    df_left.to_csv(out_nameL)
-    df_right.to_csv(out_nameR)
+# https://docs.python.org/2/library/datetime.html#strftime-strptime-behavior
+    df_left.to_csv(out_nameL, date_format='%H:%M:%S.%f')
+    df_right.to_csv(out_nameR, date_format='%H:%M:%S.%f')
     
 #    out_nameR = root_name + '_R.csv'
 #    np.savetxt(out_nameL, outputL, fmt = '%.4f', delimiter=',', header = headerStr)
