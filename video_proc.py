@@ -220,10 +220,10 @@ def frame_diff(video_filename, mid_line, showVideo = False):
     return (fps, width, height)
  
 
-mid_line = 183    
+mid_line = 180    
 t1 = time()    
 video_file = '../../image_data/ratavi_3/930219-B-car-3-1d.avi.mkv'    
-frame_diff(video_file, mid_line, showVideo=True)  # True False
+frame_diff(video_file, mid_line, showVideo=False)  # True False
 t2 = time()
 print('Computation time takes %f seconds' % (t2-t1))
 sys.stdout.write('\a')

@@ -8,7 +8,13 @@ from progressbar import AnimatedMarker, Bar, BouncingBar, Counter, ETA, \
     FormatLabel, Percentage, ProgressBar, RotatingMarker, \
 SimpleProgress, Timer
 
-
+jump_rows = 5
+thMin = 0.004
+thMax = 0.08
+video_name = '930219-B-car-3-1d'
+left_right = 'L'
+read_cols = (0, 6, 10)
+mid_line = 180  
 frame_loc = 0
 
 def windowed_view(arr, window, overlap):
@@ -36,8 +42,13 @@ def write_video(start, end, fps_out, lr):
     mm = int(minutes % 60)
     ss = sec - hh*60*60 - mm*60
 #   print('start {}, end {}'.format(start, end))
+    if lr=='L':
+        w = mid_line
+    else:
+        w = width - mid_line
     outName = '../../tmp/%c%05d_%02d%02d%05.02f.avi' % (lr, start, hh, mm, ss)
-    vidw = cv2.VideoWriter(outName, cv2.VideoWriter_fourcc(*'XVID'), fps_out, (width, height), True)  # Make a video
+    vidw = cv2.VideoWriter(outName, cv2.VideoWriter_fourcc(*'XVID'), 
+                           fps_out, (w, height), True)  # Make a video
 
     if vidw.isOpened()==True:
         while frame_loc < start:
@@ -48,7 +59,10 @@ def write_video(start, end, fps_out, lr):
             bVideoRead, frame = cap.read()
             frame_loc += 1
             if bVideoRead:
-                vidw.write(frame)
+                if lr=='L':
+                    vidw.write(frame[:, 0:mid_line])
+                else:
+                    vidw.write(frame[:, mid_line:width])
             else:
                 break
         vidw.release()    
@@ -85,12 +99,7 @@ def write_features(start, end, fps_out, lr):
     df.to_csv(outcsvName, date_format='%H:%M:%S.%f')
 # https://docs.python.org/2/library/datetime.html#strftime-strptime-behavior
 
-jump_rows = 5
-thMin = 0.004
-thMax = 0.08
-video_name = '930219-B-car-3-1d'
-left_right = 'L'
-read_cols = (0, 6, 10)
+
 data = read_data(video_name, left_right, read_cols)
 print('Load data columns: ', read_cols)
 np.set_printoptions(precision=4, suppress=True)
