@@ -21,22 +21,24 @@ def windowed_view(arr, window, overlap):
     return as_strided(arr, shape=new_shape, strides=new_strides)
 
 
-def read_data(video_name, lr):    
+def read_data(video_name, lr, cols):    
     data_name = '../../image_data/ratavi_3/{}_{}.csv'.format(video_name, lr)
     data = np.genfromtxt(data_name, dtype=np.float32, skip_header=1, 
-                       delimiter=',', usecols=(0,6,10))
+                       delimiter=',', usecols=cols)
     return data
 
 
-def write_video(start, end, fps_out):
+def write_video(start, end, fps_out, lr):
+    global frame_loc 
     sec = start /fps
-    mm = sec // 60
-    hh = mm // 60
-    ss = sec - mm*60;
-    
-    outName = '../../tmp/f%05d_%02d%02d%05.02f.avi' % (start, hh, mm, ss)
+    minutes = sec // 60    
+    hh = int(minutes // 60)
+    mm = int(minutes % 60)
+    ss = sec - hh*60*60 - mm*60
+#   print('start {}, end {}'.format(start, end))
+    outName = '../../tmp/%c%05d_%02d%02d%05.02f.avi' % (lr, start, hh, mm, ss)
     vidw = cv2.VideoWriter(outName, cv2.VideoWriter_fourcc(*'XVID'), fps_out, (width, height), True)  # Make a video
-    global frame_loc
+
     if vidw.isOpened()==True:
         while frame_loc < start:
             bVideoRead, frame = cap.read()
@@ -54,27 +56,22 @@ def write_video(start, end, fps_out):
         print('output video error: ' , outName)
                   
 
-def write_features(start, end, fps_out):   
+def write_features(start, end, fps_out, lr):   
     sec = start /fps
-    mm = sec / 60
-    hh = int(mm // 60)
-    a = sec - mm * 60
-    if a < 0.00001:
-        ss = 0
-    else:
-        ss = a
-    minutes = int(mm - hh * 60)
-    
+    minutes = sec // 60    
+    hh = int(minutes // 60)
+    mm = int(minutes % 60)
+    ss = sec - hh*60*60 - mm*60
+
     idx = pd.Index(data[start:end+1, 0], dtype='int64')
     ser_nonzero_p1 = pd.Series(data[start:end+1, 1], idx)
     ser_nonzero_p5 = pd.Series(data[start:end+1, 2], idx)
     freqStr = '{0:d}L'.format(int(1000 /fps_out))
     time_clip = pd.date_range(0, periods=end-start+1, freq=freqStr)
     
-    start_time = '2000-01-01 {}:{}:{}'.format(hh, minutes, ss)
-    
-#    print(start_time, sec, mm)
-    freqStr = '{0:d}L'.format(int(1000 /(fps_out*2)))
+    start_time = '2000-01-01 {}:{}:{}'.format(hh, mm, ss)
+    freqStr = '{0:d}L'.format(int(1000 /fps))
+#    print(start_time, 'start{}, sec{}, ss{}, mm{}]'.format(start, sec, ss, mm) ) 
     time_video = pd.date_range(start_time, periods=end-start+1, freq=freqStr)
     
     ser_time_clip = pd.Series(time_clip, idx)
@@ -84,20 +81,22 @@ def write_features(start, end, fps_out):
                        'tm_clip':ser_time_clip,
                        'tm_video':ser_time_video})
     
-    outcsvName = '../../tmp/f%05d.csv' % start
+    outcsvName = '../../tmp/%c%05d.csv' % (lr, start)
     df.to_csv(outcsvName, date_format='%H:%M:%S.%f')
 # https://docs.python.org/2/library/datetime.html#strftime-strptime-behavior
 
-
-thMin = 0.001
-thMax = 0.02
+jump_rows = 5
+thMin = 0.004
+thMax = 0.08
 video_name = '930219-B-car-3-1d'
-data = read_data(video_name, 'L')
-print('Load data ok ...')
+left_right = 'L'
+read_cols = (0, 6, 10)
+data = read_data(video_name, left_right, read_cols)
+print('Load data columns: ', read_cols)
 np.set_printoptions(precision=4, suppress=True)
-print(data[:10])
+print(data[4:7])
 print('....')
-print(data[-5:])
+print(data[-3:])
 
 data_p1 = data[:, 1]
 data_p5 = data[:, 2]
@@ -106,6 +105,7 @@ total_frames = data[-1, 0]
 moving_win = windowed_view(data_p5, 10, 5)
 win_mean = np.mean(moving_win, axis=1)
 label = (win_mean > thMin) & (win_mean < thMax)
+label[:jump_rows] = False
 print('win_mean.shape %d' % win_mean.shape)
 print('nonzero of label %d' % np.count_nonzero(label))
 
@@ -149,7 +149,8 @@ extract_clips = 0
 
 widgets = [Percentage(), Bar()]
 pbar = ProgressBar(widgets=widgets, maxval=labelLick1.size).start()
-for i in range(labelLick1.size):
+
+for i in range(5,labelLick1.size):
     frameCounter = i * 5
    
     if labelLick1[i] == True:
@@ -157,6 +158,7 @@ for i in range(labelLick1.size):
         if bVideoWR == False:
             extract_clips += 1
             start_frame = frameCounter
+            end_frame = frameCounter
             bVideoWR = True
         else:
             if frameCounter < total_frames:
@@ -167,8 +169,9 @@ for i in range(labelLick1.size):
     else:
         if bVideoWR == True:
             bVideoWR = False
-            write_features(start_frame, end_frame, fps_out)
-            write_video(start_frame, end_frame, fps_out)
+            if end_frame > start_frame:
+                write_features(start_frame, end_frame, fps_out, left_right)
+                write_video(start_frame, end_frame, fps_out, left_right)
     
     pbar.update(i)
 

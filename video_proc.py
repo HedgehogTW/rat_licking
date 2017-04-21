@@ -64,8 +64,6 @@ def frame_diff(video_filename, mid_line, showVideo = False):
 
     resultL[:5, :] = 0
     resultR[:5, :] = 0
-    resultL[:5, 0] = range(5)
-    resultR[:5, 0] = range(5)
     
     frameNum = 5 # start from 0
     
@@ -88,24 +86,27 @@ def frame_diff(video_filename, mid_line, showVideo = False):
         
         if showVideo:
             mask_p5 = (diff_p5 > MIN_DIFF) * 255
-            mask_p4 = (diff_p4 > MIN_DIFF) * 255
-            mask_p3 = (diff_p3 > MIN_DIFF) * 255
-            mask_p2 = (diff_p2 > MIN_DIFF) * 255
+#            mask_p4 = (diff_p4 > MIN_DIFF) * 255
+#            mask_p3 = (diff_p3 > MIN_DIFF) * 255
+#            mask_p2 = (diff_p2 > MIN_DIFF) * 255
             mask_p1 = (diff_p1 > MIN_DIFF) * 255
 
             mask_p1 = mask_p1.astype(np.uint8)
-            mask_p2 = mask_p2.astype(np.uint8)
-            mask_p3 = mask_p3.astype(np.uint8)
-            mask_p4 = mask_p4.astype(np.uint8)
+#            mask_p2 = mask_p2.astype(np.uint8)
+#            mask_p3 = mask_p3.astype(np.uint8)
+#            mask_p4 = mask_p4.astype(np.uint8)
             mask_p5 = mask_p5.astype(np.uint8)
             
             cv2.imshow('OutputP1', mask_p1)
-            cv2.imshow('OutputP2', mask_p2)
-            cv2.imshow('OutputP3', mask_p3)
-            cv2.imshow('OutputP4', mask_p4)     
+#            cv2.imshow('OutputP2', mask_p2)
+#            cv2.imshow('OutputP3', mask_p3)
+#            cv2.imshow('OutputP4', mask_p4)     
             cv2.imshow('OutputP5', mask_p5)   
-            if cv2.waitKey(100) == 27:
+            key = cv2.waitKey(100)
+            if key == 27:
                 break
+            elif key == 32:
+                cv2.waitKey(0)
 #            mask_p1 = cv2.cvtColor(mask_p1, cv2.COLOR_GRAY2BGR)
 #            mask_p1 = cv2.cvtColor(mask_p1, cv2.COLOR_GRAY2BGR)
 #            mask_p1 = cv2.cvtColor(mask_p1, cv2.COLOR_GRAY2BGR)
@@ -184,7 +185,7 @@ def frame_diff(video_filename, mid_line, showVideo = False):
 #            break
         
     pbar.finish()    
-    
+    cv2.destroyAllWindows()
 #    mask = resultL[:, 0] >=0
     outputL = resultL[:frameNum]
     outputR = resultR[:frameNum]
@@ -219,10 +220,10 @@ def frame_diff(video_filename, mid_line, showVideo = False):
     return (fps, width, height)
  
 
-    
+mid_line = 183    
 t1 = time()    
 video_file = '../../image_data/ratavi_3/930219-B-car-3-1d.avi.mkv'    
-frame_diff(video_file, 183, showVideo=False)
+frame_diff(video_file, mid_line, showVideo=True)  # True False
 t2 = time()
 print('Computation time takes %f seconds' % (t2-t1))
 sys.stdout.write('\a')
