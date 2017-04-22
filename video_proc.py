@@ -71,11 +71,11 @@ def frame_diff(video_filename, mid_line, showVideo = False):
     pbar = ProgressBar(widgets=widgets, maxval=frame_count).start()
     
     while True:
-        bVideoRead, frame = cap.read()  
+        bVideoRead, frame_src = cap.read()  
         if bVideoRead == False:
             break
          
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        frame = cv2.cvtColor(frame_src, cv2.COLOR_BGR2GRAY)
         frame = frame.astype(np.int16)
         
         diff_p5 = abs(frame - frame_p5)
@@ -97,11 +97,18 @@ def frame_diff(video_filename, mid_line, showVideo = False):
 #            mask_p4 = mask_p4.astype(np.uint8)
             mask_p5 = mask_p5.astype(np.uint8)
             
-            cv2.imshow('OutputP1', mask_p1)
+            medianP1 = cv2.medianBlur(mask_p1, 3)
+            medianP5 = cv2.medianBlur(mask_p5, 3)
+            element = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))
+            dilatedP1 = cv2.dilate(medianP1, element) 
+            dilatedP5 = cv2.dilate(medianP5, element)
+            
+            cv2.imshow('OutputP1', dilatedP1)
+            cv2.imshow('Src', frame_src)
 #            cv2.imshow('OutputP2', mask_p2)
 #            cv2.imshow('OutputP3', mask_p3)
 #            cv2.imshow('OutputP4', mask_p4)     
-            cv2.imshow('OutputP5', mask_p5)   
+#            cv2.imshow('OutputP5', dilatedP5)   
             key = cv2.waitKey(100)
             if key == 27:
                 break
@@ -223,7 +230,7 @@ def frame_diff(video_filename, mid_line, showVideo = False):
 mid_line = 180    
 t1 = time()    
 video_file = '../../image_data/ratavi_3/930219-B-car-3-1d.avi.mkv'    
-frame_diff(video_file, mid_line, showVideo=False)  # True False
+frame_diff(video_file, mid_line, showVideo=True)  # True False
 t2 = time()
 print('Computation time takes %f seconds' % (t2-t1))
 sys.stdout.write('\a')
