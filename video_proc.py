@@ -15,9 +15,48 @@ from progressbar import AnimatedMarker, Bar, BouncingBar, Counter, ETA, \
     FormatLabel, Percentage, ProgressBar, RotatingMarker, \
 SimpleProgress, Timer
 
+mid_line = 180
 MIN_DIFF = 15
+MOVING_TH_MIN = 0.04
+MOVING_TH_MAX = 1
+fontFace = cv2.FONT_HERSHEY_SIMPLEX
+BG_HISTORY = 500
+fgmask = None
+fgbg = None
 
-def frame_diff(video_filename, mid_line, showVideo = False):
+def detect_forground(video_filename):
+    cap = cv2.VideoCapture(video_filename)
+    bOpenVideo = cap.isOpened()
+    print('Open Video: {0} '.format(bOpenVideo))
+    if bOpenVideo == False:
+        return
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+
+    while True:
+        bVideoRead, frame_src = cap.read()
+        if bVideoRead == False:
+            break
+
+        fgmask = fgbg.apply(frame_src)
+        medianP1 = cv2.medianBlur(fgmask, 3)
+        fgmask = cv2.morphologyEx(medianP1, cv2.MORPH_OPEN, kernel)
+
+        cv2.imshow('FG', fgmask)
+
+        key = cv2.waitKey(300)
+        if key == 27:
+            break
+        elif key == 32:
+            cv2.waitKey(0)
+
+    cap.release()
+
+
+def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
+    global fgmask
+    global fgbg
+
     print ('opencv version ', cv2.__version__)
     cap = cv2.VideoCapture(video_filename)
     bOpenVideo = cap.isOpened()
@@ -64,8 +103,12 @@ def frame_diff(video_filename, mid_line, showVideo = False):
 
     resultL[:5, :] = 0
     resultR[:5, :] = 0
-    
+
+    if bg_subtract:
+        fgbg = cv2.createBackgroundSubtractorMOG2(detectShadows=False)
+
     frameNum = 5 # start from 0
+    bg_train_frame_count = 0
     
     widgets = [Percentage(), Bar()]
     pbar = ProgressBar(widgets=widgets, maxval=frame_count).start()
@@ -146,6 +189,15 @@ def frame_diff(video_filename, mid_line, showVideo = False):
         frame_p3 = frame_p2.copy()
         frame_p2 = frame_p1.copy()
         frame_p1 = frame.copy()
+
+        if bg_subtract:
+            if nonzero_p1L < MOVING_TH_MAX and nonzero_p1L > MOVING_TH_MIN and \
+                        nonzero_p1R < MOVING_TH_MAX and nonzero_p1R > MOVING_TH_MIN:
+                if bg_train_frame_count < BG_HISTORY:
+                    fgmask = fgbg.apply(frame_src)
+                    bg_train_frame_count += 1
+                else:
+                    break
         
         if showVideo:
             mask_p5 = (diff_p5 > MIN_DIFF) * 255
@@ -163,19 +215,25 @@ def frame_diff(video_filename, mid_line, showVideo = False):
             medianP1 = cv2.medianBlur(mask_p1, 3)
             medianP5 = cv2.medianBlur(mask_p5, 3)
             element = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))
-            dilatedP1 = cv2.dilate(medianP1, element) 
+            dilatedP1 = cv2.dilate(medianP1, element)
             dilatedP5 = cv2.dilate(medianP5, element)
-            
-            fontFace = cv2.FONT_HERSHEY_SIMPLEX
-            p1str = 'L {0:.4f}       R {1:.4f}'.format(nonzero_p5L, nonzero_p5R)
-            cv2.putText(dilatedP1, p1str, (0,20), fontFace, 0.4, (255,255,255))
-            cv2.imshow('OutputP1', dilatedP1)
+            out_color = cv2.cvtColor(dilatedP1, cv2.COLOR_GRAY2BGR)
+
+            font_color = (255,255,255)
+            if nonzero_p1L < MOVING_TH_MAX and nonzero_p1L > MOVING_TH_MIN and \
+                nonzero_p1R < MOVING_TH_MAX and nonzero_p1R > MOVING_TH_MIN:
+                font_color = (0, 255, 0)
+
+            p1str = 'L {0:.4f}       R {1:.4f}'.format(nonzero_p1L, nonzero_p1R)
+            cv2.putText(out_color, p1str, (0,20), fontFace, 0.5, font_color)
+
+            cv2.imshow('OutputP1', out_color)
             cv2.imshow('Src', frame_src)
 #            cv2.imshow('OutputP2', mask_p2)
 #            cv2.imshow('OutputP3', mask_p3)
 #            cv2.imshow('OutputP4', mask_p4)     
 #            cv2.imshow('OutputP5', dilatedP5)   
-            key = cv2.waitKey(100)
+            key = cv2.waitKey(500)
             if key == 27:
                 break
             elif key == 32:
@@ -189,6 +247,7 @@ def frame_diff(video_filename, mid_line, showVideo = False):
         
     pbar.finish()    
     cv2.destroyAllWindows()
+    cap.release()
 #    mask = resultL[:, 0] >=0
     outputL = resultL[:frameNum]
     outputR = resultR[:frameNum]
@@ -220,14 +279,18 @@ def frame_diff(video_filename, mid_line, showVideo = False):
 #    np.savetxt(out_nameR, outputR, fmt = '%.4f', delimiter=',', header = headerStr)
     print('output: {}'.format(out_nameL))
     print('output: {}'.format(out_nameR))
+    print('bg_train_frame_count: ', bg_train_frame_count)
     return (fps, width, height)
- 
 
-mid_line = 180    
-t1 = time()    
+t1 = time()
 video_file = '../../image_data/ratavi_3/930219-B-car-3-1d.avi.mkv'    
-frame_diff(video_file, mid_line, showVideo=True)  # True False
+frame_diff(video_file, mid_line, showVideo=True, bg_subtract=False)  # True False
 t2 = time()
 print('Computation time takes %f seconds' % (t2-t1))
+print('fg type:', fgmask.shape, fgmask.dtype)
+
+#detect_forground(video_file)
+
+
 sys.stdout.write('\a')
 
