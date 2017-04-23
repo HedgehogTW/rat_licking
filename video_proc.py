@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import cv2
 from time import time
+from scipy.stats import gaussian_kde
 
 from progressbar import AnimatedMarker, Bar, BouncingBar, Counter, ETA, \
     FormatLabel, Percentage, ProgressBar, RotatingMarker, \
@@ -104,6 +105,7 @@ def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
     resultL[:5, :] = 0
     resultR[:5, :] = 0
 
+    element = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))
     if bg_subtract:
         fgbg = cv2.createBackgroundSubtractorMOG2(detectShadows=False)
 
@@ -150,17 +152,45 @@ def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
         diffSum_p2R = np.sum(diff_p2R) / sizeR
         diffSum_p1R = np.sum(diff_p1R) / sizeR
    
-        nonzero_p5L = np.count_nonzero(diff_p5L > MIN_DIFF) / sizeL     
-        nonzero_p4L = np.count_nonzero(diff_p4L > MIN_DIFF) / sizeL
-        nonzero_p3L = np.count_nonzero(diff_p3L > MIN_DIFF) / sizeL
-        nonzero_p2L = np.count_nonzero(diff_p2L > MIN_DIFF) / sizeL
-        nonzero_p1L = np.count_nonzero(diff_p1L > MIN_DIFF) / sizeL
+        mask_p5L = diff_p5L > MIN_DIFF
+        mask_p4L = diff_p4L > MIN_DIFF
+        mask_p3L = diff_p3L > MIN_DIFF
+        mask_p2L = diff_p2L > MIN_DIFF
+        mask_p1L = diff_p1L > MIN_DIFF
+
+        mask_p5R = diff_p5R > MIN_DIFF
+        mask_p4R = diff_p4R > MIN_DIFF
+        mask_p3R = diff_p3R > MIN_DIFF
+        mask_p2R = diff_p2R > MIN_DIFF
+        mask_p1R = diff_p1R > MIN_DIFF        
+        
+        nonzero_p5L = np.count_nonzero(mask_p5L) / sizeL     
+        nonzero_p4L = np.count_nonzero(mask_p4L) / sizeL
+        nonzero_p3L = np.count_nonzero(mask_p3L) / sizeL
+        nonzero_p2L = np.count_nonzero(mask_p2L) / sizeL
+        nonzero_p1L = np.count_nonzero(mask_p1L) / sizeL
  
-        nonzero_p5R = np.count_nonzero(diff_p5R > MIN_DIFF) / sizeR
-        nonzero_p4R = np.count_nonzero(diff_p4R > MIN_DIFF) / sizeR
-        nonzero_p3R = np.count_nonzero(diff_p3R > MIN_DIFF) / sizeR
-        nonzero_p2R = np.count_nonzero(diff_p2R > MIN_DIFF) / sizeR
-        nonzero_p1R = np.count_nonzero(diff_p1R > MIN_DIFF) / sizeR
+        nonzero_p5R = np.count_nonzero(mask_p5R) / sizeR
+        nonzero_p4R = np.count_nonzero(mask_p4R) / sizeR
+        nonzero_p3R = np.count_nonzero(mask_p3R) / sizeR
+        nonzero_p2R = np.count_nonzero(mask_p2R) / sizeR
+        nonzero_p1R = np.count_nonzero(mask_p1R) / sizeR
+                                      
+        hoz_proj_L = np.sum(mask_p1L, axis = 1)
+        ver_proj_L = np.sum(mask_p1L, axis = 0)
+        hoz_proj_R = np.sum(mask_p1R, axis = 1)
+        ver_proj_R = np.sum(mask_p1R, axis = 0)     
+        
+        list_hoz_proj_L = list()
+        for i in range(hoz_proj_L.size):
+            if hoz_proj_L[i] > 0:
+                list_hoz_proj_L += [i] * hoz_proj_L[i]
+        bandwidth = 1.5
+        density_hoz = gaussian_kde(list_hoz_proj_L, bw_method=bandwidth)  
+        xs = np.linspace(0,hoz_proj_L.size,200)
+        plt.plot(xs,density_hoz(xs))
+        plt.show()
+        print(density_hoz)
         
         resultL[frameNum, 0] = diffSum_p1L
         resultL[frameNum, 1]= diffSum_p2L
@@ -214,7 +244,7 @@ def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
             
             medianP1 = cv2.medianBlur(mask_p1, 3)
             medianP5 = cv2.medianBlur(mask_p5, 3)
-            element = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))
+            
             dilatedP1 = cv2.dilate(medianP1, element)
             dilatedP5 = cv2.dilate(medianP5, element)
             out_color = cv2.cvtColor(dilatedP1, cv2.COLOR_GRAY2BGR)
@@ -242,6 +272,7 @@ def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
         frameNum += 1
         pbar.update(frameNum)
         
+        break
 #        if frameNum > 20000:
 #            break
         
