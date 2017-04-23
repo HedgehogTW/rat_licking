@@ -83,44 +83,6 @@ def frame_diff(video_filename, mid_line, showVideo = False):
         diff_p3 = abs(frame - frame_p3)
         diff_p2 = abs(frame - frame_p2)
         diff_p1 = abs(frame - frame_p1)
-        
-        if showVideo:
-            mask_p5 = (diff_p5 > MIN_DIFF) * 255
-#            mask_p4 = (diff_p4 > MIN_DIFF) * 255
-#            mask_p3 = (diff_p3 > MIN_DIFF) * 255
-#            mask_p2 = (diff_p2 > MIN_DIFF) * 255
-            mask_p1 = (diff_p1 > MIN_DIFF) * 255
-
-            mask_p1 = mask_p1.astype(np.uint8)
-#            mask_p2 = mask_p2.astype(np.uint8)
-#            mask_p3 = mask_p3.astype(np.uint8)
-#            mask_p4 = mask_p4.astype(np.uint8)
-            mask_p5 = mask_p5.astype(np.uint8)
-            
-            medianP1 = cv2.medianBlur(mask_p1, 3)
-            medianP5 = cv2.medianBlur(mask_p5, 3)
-            element = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))
-            dilatedP1 = cv2.dilate(medianP1, element) 
-            dilatedP5 = cv2.dilate(medianP5, element)
-            
-            cv2.imshow('OutputP1', dilatedP1)
-            cv2.imshow('Src', frame_src)
-#            cv2.imshow('OutputP2', mask_p2)
-#            cv2.imshow('OutputP3', mask_p3)
-#            cv2.imshow('OutputP4', mask_p4)     
-#            cv2.imshow('OutputP5', dilatedP5)   
-            key = cv2.waitKey(100)
-            if key == 27:
-                break
-            elif key == 32:
-                cv2.waitKey(0)
-#            mask_p1 = cv2.cvtColor(mask_p1, cv2.COLOR_GRAY2BGR)
-#            mask_p1 = cv2.cvtColor(mask_p1, cv2.COLOR_GRAY2BGR)
-#            mask_p1 = cv2.cvtColor(mask_p1, cv2.COLOR_GRAY2BGR)
-#            mask_p1 = cv2.cvtColor(mask_p1, cv2.COLOR_GRAY2BGR)
-            
-#        vidw.write(mask8)
-        
       
         diff_p5L = diff_p5[:, :mid_line]
         diff_p5R = diff_p5[:, mid_line:-1]     
@@ -185,6 +147,40 @@ def frame_diff(video_filename, mid_line, showVideo = False):
         frame_p2 = frame_p1.copy()
         frame_p1 = frame.copy()
         
+        if showVideo:
+            mask_p5 = (diff_p5 > MIN_DIFF) * 255
+#            mask_p4 = (diff_p4 > MIN_DIFF) * 255
+#            mask_p3 = (diff_p3 > MIN_DIFF) * 255
+#            mask_p2 = (diff_p2 > MIN_DIFF) * 255
+            mask_p1 = (diff_p1 > MIN_DIFF) * 255
+
+            mask_p1 = mask_p1.astype(np.uint8)
+#            mask_p2 = mask_p2.astype(np.uint8)
+#            mask_p3 = mask_p3.astype(np.uint8)
+#            mask_p4 = mask_p4.astype(np.uint8)
+            mask_p5 = mask_p5.astype(np.uint8)
+            
+            medianP1 = cv2.medianBlur(mask_p1, 3)
+            medianP5 = cv2.medianBlur(mask_p5, 3)
+            element = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))
+            dilatedP1 = cv2.dilate(medianP1, element) 
+            dilatedP5 = cv2.dilate(medianP5, element)
+            
+            fontFace = cv2.FONT_HERSHEY_SIMPLEX
+            p1str = 'L {0:.4f}       R {1:.4f}'.format(nonzero_p5L, nonzero_p5R)
+            cv2.putText(dilatedP1, p1str, (0,20), fontFace, 0.4, (255,255,255))
+            cv2.imshow('OutputP1', dilatedP1)
+            cv2.imshow('Src', frame_src)
+#            cv2.imshow('OutputP2', mask_p2)
+#            cv2.imshow('OutputP3', mask_p3)
+#            cv2.imshow('OutputP4', mask_p4)     
+#            cv2.imshow('OutputP5', dilatedP5)   
+            key = cv2.waitKey(100)
+            if key == 27:
+                break
+            elif key == 32:
+                cv2.waitKey(0)         
+
         frameNum += 1
         pbar.update(frameNum)
         
