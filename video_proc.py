@@ -25,6 +25,7 @@ fontFace = cv2.FONT_HERSHEY_SIMPLEX
 BG_HISTORY = 500
 fgmask = None
 fgbg = None
+element = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))
 
 def detect_forground(video_filename):
     cap = cv2.VideoCapture(video_filename)
@@ -69,13 +70,13 @@ def find_rat_center(rat_mask, bandwidth = 1.5):
             list_hoz_proj += [i] * hoz_proj[i]
     
     len_data = len(list_hoz_proj)
-    if len_data >1:
+    if len_data >6:
         density_hoz = gaussian_kde(list_hoz_proj, bw_method=bandwidth)  
         xs = np.linspace(0, hoz_proj.size, hoz_proj.size)
         ys = density_hoz(xs)
         y_pos = np.argmax(ys)  
-    elif len_data ==1:
-        y_pos = list_hoz_proj[0]
+    elif len_data >0:
+        y_pos = sum(list_hoz_proj) / len_data
         
          
         
@@ -84,16 +85,23 @@ def find_rat_center(rat_mask, bandwidth = 1.5):
             list_ver_proj += [i] * ver_proj[i]
     
     len_data =  len(list_ver_proj)
-    if len_data >1:
+    if len_data >6:
         density_hoz = gaussian_kde(list_ver_proj, bw_method=bandwidth)  
         xs = np.linspace(0, ver_proj.size, ver_proj.size)
         ys = density_hoz(xs)
         x_pos = np.argmax(ys)  
-    elif len_data ==1:
-        x_pos = list_ver_proj[0]
+    elif len_data >0 :
+        x_pos = sum(list_ver_proj) / len_data
         
     return (x_pos, y_pos)
-        
+      
+def image_process(mask_bin):
+#    mask = mask_bin * 255
+    mask_u8 = mask_bin.astype(np.uint8)            
+    median = cv2.medianBlur(mask_u8, 3)       
+    dilated = cv2.dilate(median, element)
+    return dilated
+
 def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
     global fgmask
     global fgbg
@@ -133,14 +141,14 @@ def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
     frame_p2 = cv2.cvtColor(frame_p2, cv2.COLOR_BGR2GRAY)
     frame_p1 = cv2.cvtColor(frame_p1, cv2.COLOR_BGR2GRAY)
 
-    frame_p5 = frame_p5.astype(np.int16)
-    frame_p4 = frame_p4.astype(np.int16)
-    frame_p3 = frame_p3.astype(np.int16)
-    frame_p2 = frame_p2.astype(np.int16)
-    frame_p1 = frame_p1.astype(np.int16)
+    frame_p5 = frame_p5.astype(np.int32)
+    frame_p4 = frame_p4.astype(np.int32)
+    frame_p3 = frame_p3.astype(np.int32)
+    frame_p2 = frame_p2.astype(np.int32)
+    frame_p1 = frame_p1.astype(np.int32)
    
-    resultL = np.full((frame_count, 10), -1, np.float32)
-    resultR = np.full((frame_count, 10), -1, np.float32)
+    resultL = np.full((frame_count, 12), -1, np.float32)
+    resultR = np.full((frame_count, 12), -1, np.float32)
 
     resultL[:5, :] = 0
     resultR[:5, :] = 0
@@ -161,7 +169,7 @@ def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
             break
          
         frame = cv2.cvtColor(frame_src, cv2.COLOR_BGR2GRAY)
-        frame = frame.astype(np.int16)
+        frame = frame.astype(np.int32)
         
         diff_p5 = abs(frame - frame_p5)
         diff_p4 = abs(frame - frame_p4)
@@ -192,18 +200,29 @@ def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
         diffSum_p2R = np.sum(diff_p2R) / sizeR
         diffSum_p1R = np.sum(diff_p1R) / sizeR
    
-        mask_p5L = diff_p5L > MIN_DIFF
-        mask_p4L = diff_p4L > MIN_DIFF
-        mask_p3L = diff_p3L > MIN_DIFF
-        mask_p2L = diff_p2L > MIN_DIFF
-        mask_p1L = diff_p1L > MIN_DIFF
+        mask_p5 = (diff_p5 > MIN_DIFF) 
+        mask_p4 = (diff_p4 > MIN_DIFF) 
+        mask_p3 = (diff_p3 > MIN_DIFF) 
+        mask_p2 = (diff_p2 > MIN_DIFF) 
+        mask_p1 = (diff_p1 > MIN_DIFF) 
 
-        mask_p5R = diff_p5R > MIN_DIFF
-        mask_p4R = diff_p4R > MIN_DIFF
-        mask_p3R = diff_p3R > MIN_DIFF
-        mask_p2R = diff_p2R > MIN_DIFF
-        mask_p1R = diff_p1R > MIN_DIFF        
-        
+        mask_p1x = image_process(mask_p1)
+        mask_p2x = image_process(mask_p2)
+        mask_p3x = image_process(mask_p3)
+        mask_p4x = image_process(mask_p4)
+        mask_p5x = image_process(mask_p5)  
+
+        mask_p5L = mask_p5x[:, :mid_line]
+        mask_p5R = mask_p5x[:, mid_line:-1]     
+        mask_p4L = mask_p4x[:, :mid_line]
+        mask_p4R = mask_p4x[:, mid_line:-1]
+        mask_p3L = mask_p3x[:, :mid_line]
+        mask_p3R = mask_p3x[:, mid_line:-1]
+        mask_p2L = mask_p2x[:, :mid_line]
+        mask_p2R = mask_p2x[:, mid_line:-1]
+        mask_p1L = mask_p1x[:, :mid_line]
+        mask_p1R = mask_p1x[:, mid_line:-1]         
+            
         nonzero_p5L = np.count_nonzero(mask_p5L) / sizeL     
         nonzero_p4L = np.count_nonzero(mask_p4L) / sizeL
         nonzero_p3L = np.count_nonzero(mask_p3L) / sizeL
@@ -219,7 +238,7 @@ def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
         (lx, ly) = find_rat_center(mask_p1L)   
         (rx, ry) = find_rat_center(mask_p1R)
         
-        resultL[frameNum, 0] = diffSum_p1L
+        resultL[frameNum, 0]= diffSum_p1L
         resultL[frameNum, 1]= diffSum_p2L
         resultL[frameNum, 2]= diffSum_p3L
         resultL[frameNum, 3]= diffSum_p4L
@@ -228,9 +247,11 @@ def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
         resultL[frameNum, 6]= nonzero_p2L
         resultL[frameNum, 7]= nonzero_p3L
         resultL[frameNum, 8]= nonzero_p4L
-        resultL[frameNum, 9] = nonzero_p5L
+        resultL[frameNum, 9]= nonzero_p5L
+        resultL[frameNum, 10]= lx
+        resultL[frameNum, 11]= ly
                           
-        resultR[frameNum, 0] = diffSum_p1R
+        resultR[frameNum, 0]= diffSum_p1R
         resultR[frameNum, 1]= diffSum_p2R
         resultR[frameNum, 2]= diffSum_p3R
         resultR[frameNum, 3]= diffSum_p4R
@@ -239,13 +260,15 @@ def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
         resultR[frameNum, 6]= nonzero_p2R
         resultR[frameNum, 7]= nonzero_p3R
         resultR[frameNum, 8]= nonzero_p4R
-        resultR[frameNum, 9] = nonzero_p5R
+        resultR[frameNum, 9]= nonzero_p5R
+        resultR[frameNum, 10]= rx
+        resultR[frameNum, 11]= ry       
                           
-        frame_p5 = frame_p4.copy()       
-        frame_p4 = frame_p3.copy()
-        frame_p3 = frame_p2.copy()
-        frame_p2 = frame_p1.copy()
-        frame_p1 = frame.copy()
+        frame_p5 = frame_p4 #.copy()       
+        frame_p4 = frame_p3 #.copy()
+        frame_p3 = frame_p2 #.copy()
+        frame_p2 = frame_p1 #.copy()
+        frame_p1 = frame #.copy()
 
         if bg_subtract:
             if nonzero_p1L < MOVING_TH_MAX and nonzero_p1L > MOVING_TH_MIN and \
@@ -257,25 +280,8 @@ def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
                     break
         
         if showVideo:
-            mask_p5 = (diff_p5 > MIN_DIFF) * 255
-#            mask_p4 = (diff_p4 > MIN_DIFF) * 255
-#            mask_p3 = (diff_p3 > MIN_DIFF) * 255
-#            mask_p2 = (diff_p2 > MIN_DIFF) * 255
-            mask_p1 = (diff_p1 > MIN_DIFF) * 255
-
-            mask_p1 = mask_p1.astype(np.uint8)
-#            mask_p2 = mask_p2.astype(np.uint8)
-#            mask_p3 = mask_p3.astype(np.uint8)
-#            mask_p4 = mask_p4.astype(np.uint8)
-            mask_p5 = mask_p5.astype(np.uint8)
-            
-            medianP1 = cv2.medianBlur(mask_p1, 3)
-            medianP5 = cv2.medianBlur(mask_p5, 3)
-            
-            dilatedP1 = cv2.dilate(medianP1, element)
-            dilatedP5 = cv2.dilate(medianP5, element)
-            
-            out_color = cv2.cvtColor(dilatedP1, cv2.COLOR_GRAY2BGR)
+            mask_p1g = mask_p1x *255           
+            out_color = cv2.cvtColor(mask_p1g, cv2.COLOR_GRAY2BGR)
 
             font_color = (255,255,255)
             if nonzero_p1L < MOVING_TH_MAX and nonzero_p1L > MOVING_TH_MIN and \
@@ -290,13 +296,8 @@ def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
             if rx != -1 and ry != -1:
                 cv2.circle(frame_src, (rx + mid_line, ry), 4, (0, 0, 255), -1)
               
-#            cv2.imshow('mask_p1', mask_p1)
             cv2.imshow('OutputP1', out_color)
             cv2.imshow('Src', frame_src)
-#            cv2.imshow('OutputP2', mask_p2)
-#            cv2.imshow('OutputP3', mask_p3)
-#            cv2.imshow('OutputP4', mask_p4)     
-#            cv2.imshow('OutputP5', dilatedP5)   
             key = cv2.waitKey(10)
             if key == 27:
                 break
@@ -349,10 +350,10 @@ def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
 
 t1 = time()
 video_file = '../../image_data/ratavi_3/930219-B-car-3-1d.avi.mkv'    
-frame_diff(video_file, mid_line, showVideo=True, bg_subtract=False)  # True False
+frame_diff(video_file, mid_line, showVideo=False, bg_subtract=False)  # True False
 t2 = time()
 print('Computation time takes %f seconds' % (t2-t1))
-print('fg type:', fgmask.shape, fgmask.dtype)
+
 
 #detect_forground(video_file)
 
