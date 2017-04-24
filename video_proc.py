@@ -8,6 +8,7 @@ import sys
 import os.path as path
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 import cv2
 from time import time
 from scipy.stats import gaussian_kde
@@ -53,7 +54,46 @@ def detect_forground(video_filename):
 
     cap.release()
 
-
+def find_rat_center(rat_mask, bandwidth = 1.5):
+    
+    y_pos = -1
+    x_pos = -1
+    hoz_proj = np.sum(rat_mask, axis = 1)
+    ver_proj = np.sum(rat_mask, axis = 0)  
+    
+    list_hoz_proj = list()
+    list_ver_proj = list()
+    
+    for i in range(hoz_proj.size):
+        if hoz_proj[i] > 0:
+            list_hoz_proj += [i] * hoz_proj[i]
+    
+    len_data = len(list_hoz_proj)
+    if len_data >1:
+        density_hoz = gaussian_kde(list_hoz_proj, bw_method=bandwidth)  
+        xs = np.linspace(0, hoz_proj.size, hoz_proj.size)
+        ys = density_hoz(xs)
+        y_pos = np.argmax(ys)  
+    elif len_data ==1:
+        y_pos = list_hoz_proj[0]
+        
+         
+        
+    for i in range(ver_proj.size):
+        if ver_proj[i] > 0:
+            list_ver_proj += [i] * ver_proj[i]
+    
+    len_data =  len(list_ver_proj)
+    if len_data >1:
+        density_hoz = gaussian_kde(list_ver_proj, bw_method=bandwidth)  
+        xs = np.linspace(0, ver_proj.size, ver_proj.size)
+        ys = density_hoz(xs)
+        x_pos = np.argmax(ys)  
+    elif len_data ==1:
+        x_pos = list_ver_proj[0]
+        
+    return (x_pos, y_pos)
+        
 def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
     global fgmask
     global fgbg
@@ -175,22 +215,9 @@ def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
         nonzero_p3R = np.count_nonzero(mask_p3R) / sizeR
         nonzero_p2R = np.count_nonzero(mask_p2R) / sizeR
         nonzero_p1R = np.count_nonzero(mask_p1R) / sizeR
-                                      
-        hoz_proj_L = np.sum(mask_p1L, axis = 1)
-        ver_proj_L = np.sum(mask_p1L, axis = 0)
-        hoz_proj_R = np.sum(mask_p1R, axis = 1)
-        ver_proj_R = np.sum(mask_p1R, axis = 0)     
-        
-        list_hoz_proj_L = list()
-        for i in range(hoz_proj_L.size):
-            if hoz_proj_L[i] > 0:
-                list_hoz_proj_L += [i] * hoz_proj_L[i]
-        bandwidth = 1.5
-        density_hoz = gaussian_kde(list_hoz_proj_L, bw_method=bandwidth)  
-        xs = np.linspace(0,hoz_proj_L.size,200)
-        plt.plot(xs,density_hoz(xs))
-        plt.show()
-        print(density_hoz)
+                             
+        (lx, ly) = find_rat_center(mask_p1L)   
+        (rx, ry) = find_rat_center(mask_p1R)
         
         resultL[frameNum, 0] = diffSum_p1L
         resultL[frameNum, 1]= diffSum_p2L
@@ -247,6 +274,7 @@ def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
             
             dilatedP1 = cv2.dilate(medianP1, element)
             dilatedP5 = cv2.dilate(medianP5, element)
+            
             out_color = cv2.cvtColor(dilatedP1, cv2.COLOR_GRAY2BGR)
 
             font_color = (255,255,255)
@@ -254,16 +282,22 @@ def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
                 nonzero_p1R < MOVING_TH_MAX and nonzero_p1R > MOVING_TH_MIN:
                 font_color = (0, 255, 0)
 
-            p1str = 'L {0:.4f}       R {1:.4f}'.format(nonzero_p1L, nonzero_p1R)
+            p1str = '{0}: L {1:.4f}       R {2:.4f}'.format(frameNum, nonzero_p1L, nonzero_p1R)
             cv2.putText(out_color, p1str, (0,20), fontFace, 0.5, font_color)
-
+            if lx != -1 and ly != -1:
+                cv2.circle(frame_src, (lx, ly), 4, (0, 0, 255), -1)
+                
+            if rx != -1 and ry != -1:
+                cv2.circle(frame_src, (rx + mid_line, ry), 4, (0, 0, 255), -1)
+              
+#            cv2.imshow('mask_p1', mask_p1)
             cv2.imshow('OutputP1', out_color)
             cv2.imshow('Src', frame_src)
 #            cv2.imshow('OutputP2', mask_p2)
 #            cv2.imshow('OutputP3', mask_p3)
 #            cv2.imshow('OutputP4', mask_p4)     
 #            cv2.imshow('OutputP5', dilatedP5)   
-            key = cv2.waitKey(500)
+            key = cv2.waitKey(10)
             if key == 27:
                 break
             elif key == 32:
@@ -272,7 +306,7 @@ def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
         frameNum += 1
         pbar.update(frameNum)
         
-        break
+#        break
 #        if frameNum > 20000:
 #            break
         
