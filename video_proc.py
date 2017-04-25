@@ -64,14 +64,19 @@ def find_rat_center(rat_mask, bandwidth = 1.5):
     
     list_hoz_proj = list()
     list_ver_proj = list()
-    
+
     for i in range(hoz_proj.size):
         if hoz_proj[i] > 0:
             list_hoz_proj += [i] * hoz_proj[i]
-    
+
+    list_hoz_proj.append(np.random.randint(hoz_proj.size-1))
+    # f = open('list_hoz_proj.txt', 'w')
+    # f.writelines("%s\n" % item for item in list_hoz_proj)
+    # f.close()
+
     len_data = len(list_hoz_proj)
-    if len_data >6:
-        density_hoz = gaussian_kde(list_hoz_proj, bw_method=bandwidth)  
+    if len_data >3:
+        density_hoz = gaussian_kde(list_hoz_proj)#, bw_method=bandwidth)
         xs = np.linspace(0, hoz_proj.size, hoz_proj.size)
         ys = density_hoz(xs)
         y_pos = np.argmax(ys)  
@@ -83,10 +88,15 @@ def find_rat_center(rat_mask, bandwidth = 1.5):
     for i in range(ver_proj.size):
         if ver_proj[i] > 0:
             list_ver_proj += [i] * ver_proj[i]
-    
+
+        list_ver_proj.append(np.random.randint(ver_proj.size - 1))
+    # f = open('list_ver_proj.txt', 'w')
+    # f.writelines("%s\n" % item for item in list_ver_proj)
+    # f.close()
+
     len_data =  len(list_ver_proj)
-    if len_data >6:
-        density_hoz = gaussian_kde(list_ver_proj, bw_method=bandwidth)  
+    if len_data >3:
+        density_hoz = gaussian_kde(list_ver_proj)#, bw_method=bandwidth)
         xs = np.linspace(0, ver_proj.size, ver_proj.size)
         ys = density_hoz(xs)
         x_pos = np.argmax(ys)  
@@ -210,7 +220,7 @@ def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
         mask_p2x = image_process(mask_p2)
         mask_p3x = image_process(mask_p3)
         mask_p4x = image_process(mask_p4)
-        mask_p5x = image_process(mask_p5)  
+        mask_p5x = image_process(mask_p5)
 
         mask_p5L = mask_p5x[:, :mid_line]
         mask_p5R = mask_p5x[:, mid_line:-1]     
@@ -221,7 +231,7 @@ def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
         mask_p2L = mask_p2x[:, :mid_line]
         mask_p2R = mask_p2x[:, mid_line:-1]
         mask_p1L = mask_p1x[:, :mid_line]
-        mask_p1R = mask_p1x[:, mid_line:-1]         
+        mask_p1R = mask_p1x[:, mid_line:-1]
             
         nonzero_p5L = np.count_nonzero(mask_p5L) / sizeL     
         nonzero_p4L = np.count_nonzero(mask_p4L) / sizeL
