@@ -8,15 +8,19 @@ import sys
 import os.path as path
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import cv2
 from time import time
 from scipy.stats import gaussian_kde
+import pathlib
+from datetime import datetime
+
 
 from progressbar import AnimatedMarker, Bar, BouncingBar, Counter, ETA, \
     FormatLabel, Percentage, ProgressBar, RotatingMarker, \
 SimpleProgress, Timer
 
+frameNum = 0
 mid_line = 180
 MIN_DIFF = 15
 MOVING_TH_MIN = 0.04
@@ -56,7 +60,7 @@ def detect_forground(video_filename):
     cap.release()
 
 def find_rat_center(rat_mask, bandwidth = 1.5):
-    
+    global frameNum
     y_pos = -1
     x_pos = -1
     hoz_proj = np.sum(rat_mask, axis = 1)
@@ -69,40 +73,51 @@ def find_rat_center(rat_mask, bandwidth = 1.5):
         if hoz_proj[i] > 0:
             list_hoz_proj += [i] * hoz_proj[i]
 
-    list_hoz_proj.append(np.random.randint(hoz_proj.size-1))
-    # f = open('list_hoz_proj.txt', 'w')
-    # f.writelines("%s\n" % item for item in list_hoz_proj)
-    # f.close()
+    
+#    f = open('list_hoz_proj.txt', 'w')
+#    f.writelines('frameNum %d\n' % (frameNum))
+#    f.writelines("%s\n" % item for item in list_hoz_proj)
+#    f.close() 
 
     len_data = len(list_hoz_proj)
-    if len_data >3:
-        density_hoz = gaussian_kde(list_hoz_proj)#, bw_method=bandwidth)
-        xs = np.linspace(0, hoz_proj.size, hoz_proj.size)
-        ys = density_hoz(xs)
-        y_pos = np.argmax(ys)  
-    elif len_data >0:
-        y_pos = sum(list_hoz_proj) / len_data
-        
+    if len_data >5:
+        nonzero = np.count_nonzero(hoz_proj)
+        if nonzero ==1:
+            y_pos = np.nonzero(hoz_proj)[0]
+        else:
+#            list_hoz_proj.append(np.random.randint(hoz_proj.size-1))
+            density_hoz = gaussian_kde(list_hoz_proj, bw_method=bandwidth)
+            xs = np.linspace(0, hoz_proj.size, hoz_proj.size)
+            ys = density_hoz(xs)
+            y_pos = np.argmax(ys)  
+#    elif len_data >5:
+#        y_pos = sum(list_hoz_proj) / len_data
+    
          
         
     for i in range(ver_proj.size):
         if ver_proj[i] > 0:
             list_ver_proj += [i] * ver_proj[i]
 
-        list_ver_proj.append(np.random.randint(ver_proj.size - 1))
-    # f = open('list_ver_proj.txt', 'w')
-    # f.writelines("%s\n" % item for item in list_ver_proj)
-    # f.close()
+    
+#    f = open('list_ver_proj.txt', 'w')
+#    f.writelines('frameNum %d\n' % (frameNum))
+#    f.writelines("%s\n" % item for item in list_ver_proj)
+#    f.close()
 
     len_data =  len(list_ver_proj)
-    if len_data >3:
-        density_hoz = gaussian_kde(list_ver_proj)#, bw_method=bandwidth)
-        xs = np.linspace(0, ver_proj.size, ver_proj.size)
-        ys = density_hoz(xs)
-        x_pos = np.argmax(ys)  
-    elif len_data >0 :
-        x_pos = sum(list_ver_proj) / len_data
-        
+    if len_data >5:
+        nonzero = np.count_nonzero(ver_proj)
+        if nonzero ==1:
+            y_pos = np.nonzero(ver_proj)[0]
+        else:       
+#            list_ver_proj.append(np.random.randint(ver_proj.size - 1))
+            density_hoz = gaussian_kde(list_ver_proj, bw_method=bandwidth)
+            xs = np.linspace(0, ver_proj.size, ver_proj.size)
+            ys = density_hoz(xs)
+            x_pos = np.argmax(ys)  
+#    elif len_data >1 :
+#        x_pos = sum(list_ver_proj) / len_data    
     return (x_pos, y_pos)
       
 def image_process(mask_bin):
@@ -112,11 +127,12 @@ def image_process(mask_bin):
     dilated = cv2.dilate(median, element)
     return dilated
 
-def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
+def frame_diff(video_filename, dir_out, mid_line, showVideo=False, bg_subtract=False, writevideo= False):
     global fgmask
     global fgbg
+    global frameNum
 
-    print ('opencv version ', cv2.__version__)
+
     cap = cv2.VideoCapture(video_filename)
     bOpenVideo = cap.isOpened()
     print('Open Video: {0} '.format(bOpenVideo))
@@ -163,10 +179,15 @@ def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
     resultL[:5, :] = 0
     resultR[:5, :] = 0
 
-    element = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))
+    vidw = None
+    if writevideo:
+        out_video_name = dir_out.joinpath('output.avi')
+        vidw = cv2.VideoWriter(str(out_video_name), cv2.VideoWriter_fourcc(*'XVID'), 
+                           fps, (width*2, height), True)  # Make a video
     if bg_subtract:
         fgbg = cv2.createBackgroundSubtractorMOG2(detectShadows=False)
 
+    
     frameNum = 5 # start from 0
     bg_train_frame_count = 0
     
@@ -289,7 +310,7 @@ def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
                 else:
                     break
         
-        if showVideo:
+        if showVideo or writevideo:
             mask_p1g = mask_p1x *255           
             out_color = cv2.cvtColor(mask_p1g, cv2.COLOR_GRAY2BGR)
 
@@ -301,36 +322,45 @@ def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
             p1str = '{0}: L {1:.4f}       R {2:.4f}'.format(frameNum, nonzero_p1L, nonzero_p1R)
             cv2.putText(out_color, p1str, (0,20), fontFace, 0.5, font_color)
             if lx != -1 and ly != -1:
-                cv2.circle(frame_src, (lx, ly), 4, (0, 0, 255), -1)
+                cv2.circle(frame_src, ((int)(lx), (int)(ly)), 4, (0, 0, 255), -1)
+                cv2.circle(out_color, ((int)(lx), (int)(ly)), 4, (0, 0, 255), -1)
                 
             if rx != -1 and ry != -1:
-                cv2.circle(frame_src, (rx + mid_line, ry), 4, (0, 0, 255), -1)
-              
-            cv2.imshow('OutputP1', out_color)
-            cv2.imshow('Src', frame_src)
-            key = cv2.waitKey(10)
-            if key == 27:
-                break
-            elif key == 32:
-                cv2.waitKey(0)         
+                cv2.circle(frame_src, ((int)(rx) + mid_line, (int)(ry)), 4, (0, 0, 255), -1)
+                cv2.circle(out_color, ((int)(rx) + mid_line, (int)(ry)), 4, (0, 0, 255), -1)
+            
+            if writevideo:
+                out_frame = np.hstack([frame_src, out_color])
+                vidw.write(out_frame)
+            if showVideo:
+                cv2.imshow('OutputP1', out_color)
+                cv2.imshow('Src', frame_src)
+                key = cv2.waitKey(10)
+                if key == 27:
+                    break
+                elif key == 32:
+                    cv2.waitKey(0)         
 
         frameNum += 1
         pbar.update(frameNum)
         
 #        break
-#        if frameNum > 20000:
+#        if frameNum > 200:
 #            break
         
     pbar.finish()    
     cv2.destroyAllWindows()
     cap.release()
+    if writevideo:
+        vidw.release()   
+        
 #    mask = resultL[:, 0] >=0
     outputL = resultL[:frameNum]
     outputR = resultR[:frameNum]
     
     header = ['diffSum_p1', 'diffSum_p2', 'diffSum_p3', 
               'diffSum_p4', 'diffSum_p5', 'nonzero_p1', 'nonzero_p2', 
-              'nonzero_p3', 'nonzero_p4', 'nonzero_p5']
+              'nonzero_p3', 'nonzero_p4', 'nonzero_p5', 'cx', 'cy']
     df_left = pd.DataFrame(outputL, columns = header )
     df_right = pd.DataFrame(outputR, columns = header )
    
@@ -341,10 +371,12 @@ def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
     df_left.insert(len(df_left.columns), 'time', ser_time)
     df_right.insert(len(df_right.columns), 'time', ser_time)
     
-    (root_name, ext) = path.splitext(video_filename)
-    (root_name, ext) = path.splitext(root_name)
-    out_nameL = '{}_L.csv'.format(root_name)
-    out_nameR = '{}_R.csv'.format(root_name)
+#    (root_name, ext) = path.splitext(video_filename)
+#    (root_name, ext) = path.splitext(root_name)
+#    out_nameL = '{}_L.csv'.format(root_name)
+#    out_nameR = '{}_R.csv'.format(root_name)
+    out_nameL = str(dir_out.joinpath('diff_L.csv'))
+    out_nameR = str(dir_out.joinpath('diff_R.csv'))
     
 # https://docs.python.org/2/library/datetime.html#strftime-strptime-behavior
     df_left.to_csv(out_nameL, date_format='%H:%M:%S.%f')
@@ -358,11 +390,31 @@ def frame_diff(video_filename, mid_line, showVideo=False, bg_subtract=False):
     print('bg_train_frame_count: ', bg_train_frame_count)
     return (fps, width, height)
 
-t1 = time()
-video_file = '../../image_data/ratavi_3/930219-B-car-3-1d.avi.mkv'    
-frame_diff(video_file, mid_line, showVideo=False, bg_subtract=False)  # True False
-t2 = time()
-print('Computation time takes %f seconds' % (t2-t1))
+print ('opencv version ', cv2.__version__)
+
+data_path = '../../image_data/ratavi_3/'
+dpath = pathlib.Path(data_path)
+video_list = list(dpath.glob('*.mkv'))
+num_files = len(video_list)
+for i in range(num_files) :
+    video = video_list[i]
+    file_name_noext = path.basename(video)
+    index_of_dot = file_name_noext.index('.')
+    video_name = file_name_noext[:index_of_dot]
+    print('process video (%d/%d): %s ' % (i+1, num_files, video_name))
+    dir_out = dpath.joinpath(video_name)
+#    print(dir_out)
+    if not dir_out.exists():
+        dir_out.mkdir()
+
+
+    t1 = datetime.now()
+ 
+    frame_diff(str(video), dir_out, mid_line, showVideo=False, bg_subtract=False, 
+               writevideo= True)  # True False
+    t2 = datetime.now()
+    delta = t2 - t1
+    print('Computation time takes {}'.format(delta))
 
 
 #detect_forground(video_file)
