@@ -109,7 +109,8 @@ class Rat:
         outcsvName = '../../tmp/%c%05d.csv' % (lr, start)
         df.to_csv(outcsvName, date_format='%H:%M:%S.%f')
         
-    def process(self):   
+    def process(self, filename, cols):
+        Rat.read_data(filename, cols)
         data_p1 = self.data[:, 1]
         data_p5 = self.data[:, 2]
         total_frames = len(self.data)

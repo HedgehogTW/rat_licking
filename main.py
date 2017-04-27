@@ -30,7 +30,7 @@ for i in range(num_files) :
     else:      
         t1 = datetime.now()
         mouse = rat.Rat(dir_name)
-        mouse.read_data('diff_L.csv', read_cols)
+        mouse.process('diff_L.csv', read_cols)
         
         t2 = datetime.now()
         delta = t2 - t1
