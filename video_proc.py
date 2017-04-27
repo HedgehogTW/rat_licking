@@ -61,8 +61,8 @@ def detect_forground(video_filename):
 
 def find_rat_center(rat_mask, bandwidth = 1.5):
     global frameNum
-    y_pos = -1
-    x_pos = -1
+    y_pos = np.nan
+    x_pos = np.nan
     hoz_proj = np.sum(rat_mask, axis = 1)
     ver_proj = np.sum(rat_mask, axis = 0)  
     
@@ -321,11 +321,11 @@ def frame_diff(video_filename, dir_out, mid_line, showVideo=False, bg_subtract=F
 
             p1str = '{0}: L {1:.4f}       R {2:.4f}'.format(frameNum, nonzero_p1L, nonzero_p1R)
             cv2.putText(out_color, p1str, (0,20), fontFace, 0.5, font_color)
-            if lx != -1 and ly != -1:
+            if lx is not np.nan and ly is not np.nan:
                 cv2.circle(frame_src, ((int)(lx), (int)(ly)), 4, (0, 0, 255), -1)
                 cv2.circle(out_color, ((int)(lx), (int)(ly)), 4, (0, 0, 255), -1)
                 
-            if rx != -1 and ry != -1:
+            if rx is not np.nan and ry is not np.nan:
                 cv2.circle(frame_src, ((int)(rx) + mid_line, (int)(ry)), 4, (0, 0, 255), -1)
                 cv2.circle(out_color, ((int)(rx) + mid_line, (int)(ry)), 4, (0, 0, 255), -1)
             
