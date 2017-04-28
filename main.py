@@ -25,13 +25,15 @@ for i in range(num_files) :
     dir_name = dpath.joinpath(video_name)
 #    print(dir_out)
     if not dir_name.exists():
-        print('no video dir')
+        print('No data folder')
         continue
     else:      
         t1 = datetime.now()
         mouse = rat.Rat(dir_name)
         mouse.process('diff_L.csv', read_cols)
+        mouse.process('diff_R.csv', read_cols)
         
         t2 = datetime.now()
         delta = t2 - t1
         print('Computation time takes {}'.format(delta))
+        print('==========================================================')

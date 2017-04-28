@@ -10,7 +10,7 @@ import pandas as pd
 import os.path
 import cv2
 from numpy.lib.stride_tricks import as_strided
-from progressbar import Bar, Percentage
+from progressbar import ProgressBar, Bar, Percentage
 
 class Rat:
     jump_rows = 5
@@ -20,6 +20,10 @@ class Rat:
     left_right = 'L'
     mid_line = 180  
     frame_loc = 0
+    width = None
+    height = None
+    fps = None
+    
     
     def __init__(self, video_dir):
         self.video_dir = video_dir
@@ -36,7 +40,7 @@ class Rat:
     
     def read_data(self, filename, cols):   
         data_name =  self.video_dir.joinpath(filename)
-        print(str(data_name))
+        print('Process {} ...'.format(filename))
         df = pd.read_csv(str(data_name), dtype=np.float32, usecols=cols)
 #        data = np.genfromtxt(str(data_name), dtype=np.float32, skip_header=1, 
 #                           delimiter=',', usecols=cols)
@@ -46,9 +50,8 @@ class Rat:
 #        return data
           
     
-    def write_video(self, start, end, fps_out, lr):
-        global frame_loc 
-        sec = start /fps
+    def write_video(self, cap, start, end, fps_out, lr):
+        sec = start /Rat.fps
         minutes = sec // 60    
         hh = int(minutes // 60)
         mm = int(minutes % 60)
@@ -57,24 +60,26 @@ class Rat:
         if lr=='L':
             w = Rat.mid_line
         else:
-            w = width - mid_line
-        outName = '../../tmp/%c%05d_%02d%02d%05.02f.avi' % (lr, start, hh, mm, ss)
+            w = Rat.width - Rat.mid_line
+        
+        outName = '{}/{:s}{:05d}_{:02d}{:02d}{:05.02f}.avi'.format(
+                str(self.video_dir), lr, start, hh, mm, ss) 
         vidw = cv2.VideoWriter(outName, cv2.VideoWriter_fourcc(*'XVID'), 
-                               fps_out, (w, height), True)  # Make a video
+                               fps_out, (w, Rat.height), True)  # Make a video
     
         if vidw.isOpened()==True:
-            while frame_loc < start:
+            while Rat.frame_loc < start:
                 bVideoRead, frame = cap.read()
-                frame_loc += 1
+                Rat.frame_loc += 1
             
-            while frame_loc <= end:
+            while Rat.frame_loc <= end:
                 bVideoRead, frame = cap.read()
-                frame_loc += 1
+                Rat.frame_loc += 1
                 if bVideoRead:
                     if lr=='L':
-                        vidw.write(frame[:, 0:mid_line])
+                        vidw.write(frame[:, 0:Rat.mid_line])
                     else:
-                        vidw.write(frame[:, mid_line:width])
+                        vidw.write(frame[:, Rat.mid_line:Rat.width])
                 else:
                     break
             vidw.release()    
@@ -83,20 +88,20 @@ class Rat:
                       
     
     def write_features(self, start, end, fps_out, lr):   
-        sec = start /fps
+        sec = start /Rat.fps
         minutes = sec // 60    
         hh = int(minutes // 60)
         mm = int(minutes % 60)
         ss = sec - hh*60*60 - mm*60
     
-        idx = pd.Index(data[start:end+1, 0], dtype='int64')
-        ser_nonzero_p1 = pd.Series(data[start:end+1, 1], idx)
-        ser_nonzero_p5 = pd.Series(data[start:end+1, 2], idx)
+        idx = pd.Index(self.data[start:end+1, 0], dtype='int64')
+        ser_nonzero_p1 = pd.Series(self.data[start:end+1, 1], idx)
+        ser_nonzero_p5 = pd.Series(self.data[start:end+1, 2], idx)
         freqStr = '{0:d}L'.format(int(1000 /fps_out))
         time_clip = pd.date_range(0, periods=end-start+1, freq=freqStr)
         
         start_time = '2000-01-01 {}:{}:{}'.format(hh, mm, ss)
-        freqStr = '{0:d}L'.format(int(1000 /fps))
+        freqStr = '{0:d}L'.format(int(1000 /Rat.fps))
     #    print(start_time, 'start{}, sec{}, ss{}, mm{}]'.format(start, sec, ss, mm) ) 
         time_video = pd.date_range(start_time, periods=end-start+1, freq=freqStr)
         
@@ -106,16 +111,17 @@ class Rat:
                            'nozeroP5':ser_nonzero_p5,
                            'tm_clip':ser_time_clip,
                            'tm_video':ser_time_video})
-        
-        outcsvName = '../../tmp/%c%05d.csv' % (lr, start)
+    
+
+        outcsvName = '{}/{:s}{:05d}.csv'.format(str(self.video_dir), lr, start) 
         df.to_csv(outcsvName, date_format='%H:%M:%S.%f')
         
     def process(self, filename, cols):
+        Rat.frame_loc = 0
         (fname_name, ext) = os.path.splitext(filename)
         left_right = fname_name[-1]
-
         self.read_data(filename, cols=cols)
-        data_p1 = self.data[:, 1]
+#        data_p1 = self.data[:, 1]
         data_p5 = self.data[:, 2]
         total_frames = len(self.data)
         # each sample represents 5 frames (5 sec)
@@ -144,24 +150,26 @@ class Rat:
         print('sum of labelLick %d, size %d' % (np.sum(labelLick), labelLick.size))
         #plt.plot(label)
         #plt.show()
-        
-        print ('opencv version ', cv2.__version__)
-        video_file = '../../image_data/ratavi_3/{}.avi.mkv'.format(video_name)
+        (head_path, vname) = os.path.split(str(self.video_dir))
+        video_file = '{}/{}.avi.mkv'.format(head_path, vname)
+#        print ('Rat::video_file ', video_file)
         cap = cv2.VideoCapture(video_file)
         bOpenVideo = cap.isOpened()
-        print('Open Video: ', bOpenVideo)
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        if bOpenVideo == False:
+            print('Open Video failed')
+            return
         
-        fps_out = fps //2
+        Rat.fps = cap.get(cv2.CAP_PROP_FPS)
+        Rat.width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        Rat.height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        
+        fps_out = Rat.fps //2
         freqStr = '{0:d}L'.format(int(1000 /fps_out))
         
         print('fps = %d, w %d, h %d, total_frames %d, freq_out %s' % 
-              (fps, width, height, total_frames, freqStr))
+              (Rat.fps, Rat.width, Rat.height, total_frames, freqStr))
         
         bVideoWR = False
-        vidw = cv2.VideoWriter()
         extract_clips = 0
         
         widgets = [Percentage(), Bar()]
@@ -187,8 +195,8 @@ class Rat:
                 if bVideoWR == True:
                     bVideoWR = False
                     if end_frame > start_frame:
-                        Rat.write_features(start_frame, end_frame, fps_out, left_right)
-                        Rat.write_video(start_frame, end_frame, fps_out, left_right)
+                        self.write_features(start_frame, end_frame, fps_out, left_right)
+                        self.write_video(cap, start_frame, end_frame, fps_out, left_right)
             
             pbar.update(i)
         
