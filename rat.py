@@ -7,6 +7,7 @@ Created on Thu Apr 27 17:15:22 2017
 
 import numpy as np
 import pandas as pd
+import os.path
 import cv2
 from numpy.lib.stride_tricks import as_strided
 from progressbar import Bar, Percentage
@@ -110,19 +111,22 @@ class Rat:
         df.to_csv(outcsvName, date_format='%H:%M:%S.%f')
         
     def process(self, filename, cols):
-        Rat.read_data(filename, cols)
+        (fname_name, ext) = os.path.splitext(filename)
+        left_right = fname_name[-1]
+
+        self.read_data(filename, cols=cols)
         data_p1 = self.data[:, 1]
         data_p5 = self.data[:, 2]
         total_frames = len(self.data)
         # each sample represents 5 frames (5 sec)
-        moving_win = Rat.windowed_view(data_p5, 10, 5)
+        moving_win = self.windowed_view(data_p5, 10, 5)
         win_mean = np.mean(moving_win, axis=1)
         label = (win_mean > Rat.thMin) & (win_mean < Rat.thMax)
         label[:Rat.jump_rows] = False
         print('win_mean.shape %d' % win_mean.shape)
         print('nonzero of label %d' % np.count_nonzero(label))
         
-        label_win = Rat.windowed_view(label, 5, 4)
+        label_win = self.windowed_view(label, 5, 4)
         sum_label = np.sum(label_win, axis=1)
         labelLick = (sum_label == 5)
         labelLick1 = labelLick.copy()
@@ -130,9 +134,9 @@ class Rat:
             if labelLick[i] == True:
                 labelLick1[i:i+5] = True
         
-        labelLick_file_name = '../../image_data/ratavi_3/{}_labelLick.csv'.format(video_name)
+        labelLick_file_name = '{}/labelLick_{}.csv'.format(str(self.video_dir), left_right)
         labelLick1.tofile(labelLick_file_name, sep='\n')
-        label_file_name = '../../image_data/ratavi_3/{}_label.csv'.format(video_name)
+        label_file_name = '{}/label_{}.csv'.format(str(self.video_dir), left_right)
         label.tofile(label_file_name, sep='\n')
         
         print('label_win.shape ', label_win.shape)
