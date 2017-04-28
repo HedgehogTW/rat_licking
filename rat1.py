@@ -1,4 +1,6 @@
 import sys
+import pathlib
+import os.path
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -11,6 +13,7 @@ SimpleProgress, Timer
 jump_rows = 5
 thMin = 0.004
 thMax = 0.08
+data_path = '../../image_data/ratavi_3/'
 video_name = '930219-B-car-3-1d'
 left_right = 'L'
 read_cols = (0, 6, 10)
@@ -27,9 +30,9 @@ def windowed_view(arr, window, overlap):
     return as_strided(arr, shape=new_shape, strides=new_strides)
 
 
-def read_data(video_name, lr, cols):    
-    data_name = '../../image_data/ratavi_3/{}_{}.csv'.format(video_name, lr)
-    data = np.genfromtxt(data_name, dtype=np.float32, skip_header=1, 
+def read_data(dir_name, filename, cols):    
+    data_name =  dir_name.joinpath(filename)
+    data = np.genfromtxt(str(data_name), dtype=np.float32, skip_header=1, 
                        delimiter=',', usecols=cols)
     return data
 
@@ -99,8 +102,10 @@ def write_features(start, end, fps_out, lr):
     df.to_csv(outcsvName, date_format='%H:%M:%S.%f')
 # https://docs.python.org/2/library/datetime.html#strftime-strptime-behavior
 
+dpath = pathlib.Path(data_path)
+dir_name = dpath.joinpath(video_name)
 
-data = read_data(video_name, left_right, read_cols)
+data = read_data(dir_name, 'diff_L.csv', read_cols)
 print('Load data columns: ', read_cols)
 np.set_printoptions(precision=4, suppress=True)
 print(data[4:7])
@@ -188,3 +193,4 @@ pbar.finish()
 print('extract_clips: ', extract_clips)
 sys.stdout.write('\a')
 
+ 
