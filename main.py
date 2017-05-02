@@ -10,7 +10,7 @@ import pathlib
 import os.path
 from datetime import datetime
 
-read_cols = (0, 6, 10)
+read_cols = (0, 6, 10, 11, 12)
 
 data_path = '../../image_data/ratavi_3/'
 dpath = pathlib.Path(data_path)

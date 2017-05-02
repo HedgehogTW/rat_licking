@@ -14,7 +14,7 @@ from progressbar import ProgressBar, Bar, Percentage
 
 class Rat:
     jump_rows = 5
-    thMin = 0.004
+    thMin = 0.009
     thMax = 0.08
 #    video_name = '930219-B-car-3-1d'
     left_right = 'L'
@@ -41,12 +41,13 @@ class Rat:
     def read_data(self, filename, cols):   
         data_name =  self.video_dir.joinpath(filename)
         print('Process {} ...'.format(filename))
-        df = pd.read_csv(str(data_name), dtype=np.float32, usecols=cols)
+        self.df = pd.read_csv(str(data_name), index_col=0, usecols=cols)
 #        data = np.genfromtxt(str(data_name), dtype=np.float32, skip_header=1, 
 #                           delimiter=',', usecols=cols)
-        df = df.fillna(method='ffill')
-        df = df.fillna(method='bfill')
-        self.data = np.array(df)
+        self.df = self.df.fillna(method='ffill')
+        self.df = self.df.fillna(method='bfill')
+      
+#        self.data = np.array(self.df)
 #        return data
           
     
@@ -94,9 +95,10 @@ class Rat:
         mm = int(minutes % 60)
         ss = sec - hh*60*60 - mm*60
     
-        idx = pd.Index(self.data[start:end+1, 0], dtype='int64')
-        ser_nonzero_p1 = pd.Series(self.data[start:end+1, 1], idx)
-        ser_nonzero_p5 = pd.Series(self.data[start:end+1, 2], idx)
+#        idx = pd.Index(self.data[start:end+1, 0], dtype='int64')
+        idx = pd.Index(np.arange(start, end+1))
+        ser_nonzero_p1 = self.df.loc[start:end, 'nonzero_p1']
+        ser_nonzero_p5 = self.df.loc[start:end, 'nonzero_p5']
         freqStr = '{0:d}L'.format(int(1000 /fps_out))
         time_clip = pd.date_range(0, periods=end-start+1, freq=freqStr)
         
@@ -107,12 +109,11 @@ class Rat:
         
         ser_time_clip = pd.Series(time_clip, idx)
         ser_time_video = pd.Series(time_video, idx)
-        df = pd.DataFrame({'nozeroP1':ser_nonzero_p1, 
-                           'nozeroP5':ser_nonzero_p5,
+        df = pd.DataFrame({'nonzero_p1':ser_nonzero_p1, 
+                           'nonzero_p5':ser_nonzero_p5,
                            'tm_clip':ser_time_clip,
                            'tm_video':ser_time_video})
-    
-
+            
         outcsvName = '{}/{:s}{:05d}.csv'.format(str(self.video_dir), lr, start) 
         df.to_csv(outcsvName, date_format='%H:%M:%S.%f')
         
@@ -122,8 +123,8 @@ class Rat:
         left_right = fname_name[-1]
         self.read_data(filename, cols=cols)
 #        data_p1 = self.data[:, 1]
-        data_p5 = self.data[:, 2]
-        total_frames = len(self.data)
+        data_p5 = self.df.loc[:, 'nonzero_p5']
+        total_frames = len(data_p5)
         # each sample represents 5 frames (5 sec)
         moving_win = self.windowed_view(data_p5, 10, 5)
         win_mean = np.mean(moving_win, axis=1)
