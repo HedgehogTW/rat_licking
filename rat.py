@@ -114,7 +114,8 @@ class Rat:
                            'tm_clip':ser_time_clip,
                            'tm_video':ser_time_video})
             
-        outcsvName = '{}/{:s}{:05d}.csv'.format(str(self.video_dir), lr, start) 
+        outcsvName = '{}/{:s}{:05d}_{:05d}.csv'.format(str(self.video_dir), 
+                      lr, start, end) 
         df.to_csv(outcsvName, date_format='%H:%M:%S.%f')
         
     def process(self, filename, cols):
@@ -136,14 +137,22 @@ class Rat:
         label_win = self.windowed_view(label, 5, 4)
         sum_label = np.sum(label_win, axis=1)
         labelLick = (sum_label == 5)
+#        labelLick = sum_label 
         labelLick1 = labelLick.copy()
         for i in range(labelLick.size):
             if labelLick[i] == True:
-                labelLick1[i:i+5] = True
+                labelLick1[i:i+6] = True
+
+        for i in range(6, labelLick1.size):
+            if labelLick1[i] == False:
+                labelLick1[i-6:i] = False 
+       
+        labelLick_file_name = '{}/_labelLick_{}.csv'.format(str(self.video_dir), left_right)
+        labelLick.tofile(labelLick_file_name, sep='\n')
         
-        labelLick_file_name = '{}/labelLick_{}.csv'.format(str(self.video_dir), left_right)
+        labelLick_file_name = '{}/_labelLick1_{}.csv'.format(str(self.video_dir), left_right)
         labelLick1.tofile(labelLick_file_name, sep='\n')
-        label_file_name = '{}/label_{}.csv'.format(str(self.video_dir), left_right)
+        label_file_name = '{}/_label_{}.csv'.format(str(self.video_dir), left_right)
         label.tofile(label_file_name, sep='\n')
         
         print('label_win.shape ', label_win.shape)
