@@ -151,13 +151,13 @@ class Rat:
             if labelLick1[i] == False:
                 labelLick1[i-6:i] = False 
        
-        labelLick_file_name = '{}/_labelLick_{}.csv'.format(str(self.video_dir), left_right)
-        labelLick.tofile(labelLick_file_name, sep='\n')
-        
-        labelLick_file_name = '{}/_labelLick1_{}.csv'.format(str(self.video_dir), left_right)
-        labelLick1.tofile(labelLick_file_name, sep='\n')
-        label_file_name = '{}/_label_{}.csv'.format(str(self.video_dir), left_right)
-        label.tofile(label_file_name, sep='\n')
+#        labelLick_file_name = '{}/_labelLick_{}.csv'.format(str(self.video_dir), left_right)
+#        labelLick.tofile(labelLick_file_name, sep='\n')
+#        
+#        labelLick_file_name = '{}/_labelLick1_{}.csv'.format(str(self.video_dir), left_right)
+#        labelLick1.tofile(labelLick_file_name, sep='\n')
+#        label_file_name = '{}/_label_{}.csv'.format(str(self.video_dir), left_right)
+#        label.tofile(label_file_name, sep='\n')
         
         print('label_win.shape ', label_win.shape)
         print('labelLick.shape ', labelLick.shape)
