@@ -14,7 +14,7 @@ read_cols = (0, 6, 10, 11, 12)
 
 data_path = '../../image_data/ratavi_3/'
 dpath = pathlib.Path(data_path)
-video_list = list(dpath.glob('*.mkv'))
+video_list = sorted(list(dpath.glob('*.mkv')))
 num_files = len(video_list)
 for i in range(num_files) :
     video = video_list[i]
