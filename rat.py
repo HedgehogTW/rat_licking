@@ -58,14 +58,16 @@ class Rat:
         hh = int(minutes // 60)
         mm = int(minutes % 60)
         ss = sec - hh*60*60 - mm*60
+        
+        dur = (end-start) / Rat.fps
     #   print('start {}, end {}'.format(start, end))
         if lr=='L':
             w = Rat.mid_line
         else:
             w = Rat.width - Rat.mid_line
         
-        outName = '{}/{:s}{:05d}_{:02d}{:02d}{:05.02f}.avi'.format(
-                str(self.video_dir), lr, start, hh, mm, ss) 
+        outName = '{}/{:s}{:05d}_{:02d}{:02d}{:05.02f}-{:.2f}.avi'.format(
+                str(self.video_dir), lr, start, hh, mm, ss, dur) 
         vidw = cv2.VideoWriter(outName, cv2.VideoWriter_fourcc(*'XVID'), 
                                fps_out, (w, Rat.height), True)  # Make a video
     
@@ -95,6 +97,7 @@ class Rat:
         hh = int(minutes // 60)
         mm = int(minutes % 60)
         ss = sec - hh*60*60 - mm*60
+        
     
 #        idx = pd.Index(self.data[start:end+1, 0], dtype='int64')
         idx = pd.Index(np.arange(start, end+1))
