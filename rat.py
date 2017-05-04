@@ -14,6 +14,7 @@ from progressbar import ProgressBar, Bar, Percentage
 
 class Rat:
     jump_rows = 5
+    th_min_duration = 40
     thMin = 0.009
     thMax = 0.08
 #    video_name = '930219-B-car-3-1d'
@@ -179,10 +180,13 @@ class Rat:
         print('fps = %d, w %d, h %d, total_frames %d, freq_out %s' % 
               (Rat.fps, Rat.width, Rat.height, total_frames, freqStr))
         
+        print('min duration %d, diff thresh [%.4f %.4f]' % 
+              (Rat.th_min_duration, Rat.thMin, Rat.thMax))
+        
         bVideoWR = False
         extract_clips = 0
         
-        widgets = [Percentage(), Bar()]
+        widgets = [Percentage()]
         pbar = ProgressBar(widgets=widgets, maxval=labelLick1.size).start()
         
         for i in range(5,labelLick1.size):
@@ -191,7 +195,6 @@ class Rat:
             if labelLick1[i] == True:
                 #print(win_mean[i])
                 if bVideoWR == False:
-                    extract_clips += 1
                     start_frame = frameCounter
                     end_frame = frameCounter
                     bVideoWR = True
@@ -204,10 +207,11 @@ class Rat:
             else:
                 if bVideoWR == True:
                     bVideoWR = False
-                    if end_frame > start_frame:
+                    if end_frame - start_frame > Rat.th_min_duration:
                         self.write_features(start_frame, end_frame, fps_out, left_right)
                         self.write_video(cap, start_frame, end_frame, fps_out, left_right)
-            
+                        extract_clips += 1
+                        
             pbar.update(i)
         
         pbar.finish()      
