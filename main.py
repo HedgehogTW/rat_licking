@@ -42,6 +42,11 @@ def main():
             print('no diff data')
             continue
         
+        files = outfolder.glob('L*')
+        for f in files:   os.remove(f)
+        files = outfolder.glob('R*')
+        for f in files:   os.remove(f)
+
         t1 = datetime.now()
         mouse = rat.Rat(vpath, outfolder)
         mouse.process('diff_L.csv', read_cols)
