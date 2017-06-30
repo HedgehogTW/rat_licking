@@ -185,7 +185,7 @@ def frame_diff(video_filename, dir_out, mid_line, showVideo=False, bg_subtract=F
 
     vidw = None
     if writevideo:
-        out_video_name = dir_out.joinpath('output.avi')
+        out_video_name = dir_out.joinpath('_output.avi')
         vidw = cv2.VideoWriter(str(out_video_name), cv2.VideoWriter_fourcc(*'XVID'), 
                            fps, (width*2, height), True)  # Make a video
     if bg_subtract:
