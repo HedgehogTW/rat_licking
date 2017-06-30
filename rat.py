@@ -26,8 +26,9 @@ class Rat:
     fps = None
     
     
-    def __init__(self, video_dir):
+    def __init__(self, video_dir, out_dir):
         self.video_dir = video_dir
+        self.out_dir = out_dir
 
     def windowed_view(self, arr, window, overlap):
         arr = np.asarray(arr)
@@ -40,7 +41,7 @@ class Rat:
     
     
     def read_data(self, filename, cols):   
-        data_name =  self.video_dir.joinpath(filename)
+        data_name =  self.out_dir.joinpath(filename)
         print('Process {} ...'.format(filename))
         self.df = pd.read_csv(str(data_name), index_col=0, usecols=cols)
 #        data = np.genfromtxt(str(data_name), dtype=np.float32, skip_header=1, 
@@ -67,7 +68,7 @@ class Rat:
             w = Rat.width - Rat.mid_line
         
         outName = '{}/{:s}{:05d}_{:02d}{:02d}{:05.02f}-{:.2f}.avi'.format(
-                str(self.video_dir), lr, start, hh, mm, ss, dur) 
+                str(self.out_dir), lr, start, hh, mm, ss, dur) 
         vidw = cv2.VideoWriter(outName, cv2.VideoWriter_fourcc(*'XVID'), 
                                fps_out, (w, Rat.height), True)  # Make a video
     
@@ -118,7 +119,7 @@ class Rat:
                            'tm_clip':ser_time_clip,
                            'tm_video':ser_time_video})
             
-        outcsvName = '{}/{:s}{:05d}_{:05d}.csv'.format(str(self.video_dir), 
+        outcsvName = '{}/{:s}{:05d}_{:05d}.csv'.format(str(self.out_dir), 
                       lr, start, end) 
         df.to_csv(outcsvName, date_format='%H:%M:%S.%f')
         
@@ -164,8 +165,8 @@ class Rat:
         print('sum of labelLick %d, size %d' % (np.sum(labelLick), labelLick.size))
         #plt.plot(label)
         #plt.show()
-        (head_path, vname) = os.path.split(str(self.video_dir))
-        video_file = '{}/{}.avi.mkv'.format(head_path, vname)
+#        (head_path, vname) = os.path.split(str(self.video_dir))
+        video_file = '{}/{}.avi.mkv'.format(str(self.video_dir), self.out_dir.name)
 #        print ('Rat::video_file ', video_file)
         cap = cv2.VideoCapture(video_file)
         bOpenVideo = cap.isOpened()

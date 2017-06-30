@@ -4,7 +4,10 @@ Spyder Editor
 
 This is a temporary script file.
 """
-import sys
+import shutil
+import os
+import sys, getopt
+from sys import platform as _platform
 import os.path as path
 import numpy as np
 import pandas as pd
@@ -16,10 +19,11 @@ import pathlib
 from datetime import datetime
 
 
-from progressbar import AnimatedMarker, Bar, BouncingBar, Counter, ETA, \
-    FormatLabel, Percentage, ProgressBar, RotatingMarker, \
-SimpleProgress, Timer
+from progressbar import Bar, Percentage, ProgressBar
 
+
+
+   
 frameNum = 0
 mid_line = 180
 MIN_DIFF = 15
@@ -390,35 +394,57 @@ def frame_diff(video_filename, dir_out, mid_line, showVideo=False, bg_subtract=F
     print('bg_train_frame_count: ', bg_train_frame_count)
     return (fps, width, height)
 
-print ('opencv version ', cv2.__version__)
 
-data_path = '../../image_data/ratavi_3/'
-dpath = pathlib.Path(data_path)
-video_list = list(dpath.glob('*.mkv'))
-num_files = len(video_list)
-for i in range(num_files) :
-    video = video_list[i]
-    file_name_noext = path.basename(video)
-    index_of_dot = file_name_noext.index('.')
-    video_name = file_name_noext[:index_of_dot]
-    print('process video (%d/%d): %s ' % (i+1, num_files, video_name))
-    dir_out = dpath.joinpath(video_name)
-#    print(dir_out)
-    if not dir_out.exists():
+
+def main():
+    print('len(sys.argv):', len(sys.argv))
+    print ('opencv version ', cv2.__version__)
+    video_path = None 
+    out_path = None 
+    if _platform == "linux" or _platform == "linux2": # linux
+       video_path = '/home/cclee/image_data/ratavi_3/'
+       out_path = '/home/cclee/tmp/'
+    elif _platform == "darwin": # MAC OS X
+       video_path = '/Users/CCLee/image_data/RatAVI_3/' 
+       out_path = '/Users/CCLee/tmp/'
+    elif _platform == "win32": # Windows
+       video_path = 'E:/image_data/RatAVI_3/'
+       out_path = 'E:/tmp/'
+
+    
+    dpath = pathlib.Path(video_path)
+    outpath = pathlib.Path(out_path)
+    outpath = outpath.joinpath('rat')
+    if not outpath.exists():
+        outpath.mkdir()
+        
+    video_list = sorted(dpath.glob('*.mkv'))
+    vlist = [i for i in video_list if 'car' in str(i)]
+    num_files = len(vlist)
+    for i in range(num_files) :
+        fname = vlist[i].name
+        ftitle = fname.rsplit('.', 2)[0]  
+    
+        print('process video (%d/%d): %s ' % (i+1, num_files, ftitle))
+        dir_out = outpath.joinpath(ftitle)
+    #    print(dir_out)
+        if dir_out.exists():
+            shutil.rmtree(str(dir_out))
         dir_out.mkdir()
-
-
-    t1 = datetime.now()
+    
+    
+        t1 = datetime.now()
+     
+        frame_diff(str(vlist[i]), dir_out, mid_line, showVideo=False, bg_subtract=False, 
+                   writevideo= True)  # True False
+        t2 = datetime.now()
+        delta = t2 - t1
+        print('Computation time takes {}'.format(delta))
  
-    frame_diff(str(video), dir_out, mid_line, showVideo=False, bg_subtract=False, 
-               writevideo= True)  # True False
-    t2 = datetime.now()
-    delta = t2 - t1
-    print('Computation time takes {}'.format(delta))
+
+if __name__ == "__main__":
+    sys.exit(main())
+    
 
 
-#detect_forground(video_file)
-
-
-sys.stdout.write('\a')
 
