@@ -29,6 +29,8 @@ class Rat:
     def __init__(self, video_dir, out_dir):
         self.video_dir = video_dir
         self.out_dir = out_dir
+        fname = out_dir.name
+        self.vdate = fname.split('-')[0] 
 
     def windowed_view(self, arr, window, overlap):
         arr = np.asarray(arr)
@@ -67,8 +69,8 @@ class Rat:
         else:
             w = Rat.width - Rat.mid_line
         
-        outName = '{}/{:s}{:05d}_{:02d}{:02d}{:05.02f}-{:.2f}.avi'.format(
-                str(self.out_dir), lr, start, hh, mm, ss, dur) 
+        outName = '{}/{:s}_{:s}{:05d}_{:02d}{:02d}{:05.02f}-{:.2f}.avi'.format(
+                str(self.out_dir), self.vdate, lr, start, hh, mm, ss, dur) 
         vidw = cv2.VideoWriter(outName, cv2.VideoWriter_fourcc(*'XVID'), 
                                fps_out, (w, Rat.height), True)  # Make a video
     
@@ -119,8 +121,8 @@ class Rat:
                            'tm_clip':ser_time_clip,
                            'tm_video':ser_time_video})
             
-        outcsvName = '{}/{:s}{:05d}_{:05d}.csv'.format(str(self.out_dir), 
-                      lr, start, end) 
+        outcsvName = '{}/{:s}_{:s}{:05d}_{:05d}.csv'.format(str(self.out_dir), 
+                      self.vdate, lr, start, end) 
         df.to_csv(outcsvName, date_format='%H:%M:%S.%f')
         
     def process(self, filename, cols):
@@ -190,7 +192,7 @@ class Rat:
         bVideoWR = False
         extract_clips = 0
         
-        widgets = [Percentage()]
+        widgets = [Percentage(), Bar()]
         pbar = ProgressBar(widgets=widgets, maxval=labelLick1.size).start()
         
         for i in range(5,labelLick1.size):

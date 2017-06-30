@@ -36,12 +36,14 @@ def main():
     num_files = len(outdir_list)
     for i, outfolder in enumerate(outdir_list):
         fname = outfolder.name
-        print('process video (%d/%d): %s ' % (i+1, num_files, fname))
+        print('process video (%d/%d): %s' % (i+1, num_files, fname))
         fpath = dpath.joinpath(str(outfolder)+'/diff_R.csv')
         if not fpath.exists():
             print('no diff data')
             continue
         
+        files = outfolder.glob('9*')
+        for f in files:   os.remove(f)
         files = outfolder.glob('L*')
         for f in files:   os.remove(f)
         files = outfolder.glob('R*')

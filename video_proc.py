@@ -379,8 +379,8 @@ def frame_diff(video_filename, dir_out, mid_line, showVideo=False, bg_subtract=F
 #    (root_name, ext) = path.splitext(root_name)
 #    out_nameL = '{}_L.csv'.format(root_name)
 #    out_nameR = '{}_R.csv'.format(root_name)
-    out_nameL = str(dir_out.joinpath('diff_L.csv'))
-    out_nameR = str(dir_out.joinpath('diff_R.csv'))
+    out_nameL = str(dir_out.joinpath('_diff_L.csv'))
+    out_nameR = str(dir_out.joinpath('_diff_R.csv'))
     
 # https://docs.python.org/2/library/datetime.html#strftime-strptime-behavior
     df_left.to_csv(out_nameL, date_format='%H:%M:%S.%f')
