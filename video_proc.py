@@ -379,8 +379,11 @@ def frame_diff(video_filename, dir_out, mid_line, showVideo=False, bg_subtract=F
 #    (root_name, ext) = path.splitext(root_name)
 #    out_nameL = '{}_L.csv'.format(root_name)
 #    out_nameR = '{}_R.csv'.format(root_name)
-    out_nameL = str(dir_out.joinpath('_diff_L.csv'))
-    out_nameR = str(dir_out.joinpath('_diff_R.csv'))
+
+    mdate = dir_out.name.split('-')[0]
+        
+    out_nameL = str(dir_out.joinpath('_diff_L_'+mdate+'.csv'))
+    out_nameR = str(dir_out.joinpath('_diff_R_'+mdate+'.csv'))
     
 # https://docs.python.org/2/library/datetime.html#strftime-strptime-behavior
     df_left.to_csv(out_nameL, date_format='%H:%M:%S.%f')
@@ -394,27 +397,7 @@ def frame_diff(video_filename, dir_out, mid_line, showVideo=False, bg_subtract=F
     print('bg_train_frame_count: ', bg_train_frame_count)
     return (fps, width, height)
 
-
-
-def main():
-    print('len(sys.argv):', len(sys.argv))
-    print ('opencv version ', cv2.__version__)
-    video_path = None 
-    out_path = None 
-    if _platform == "linux" or _platform == "linux2": # linux
-       video_path = '/home/cclee/image_data/ratavi_3/'
-       out_path = '/home/cclee/tmp/'
-    elif _platform == "darwin": # MAC OS X
-       video_path = '/Users/CCLee/image_data/RatAVI_3/' 
-       out_path = '/Users/CCLee/tmp/'
-    elif _platform == "win32": # Windows
-       video_path = 'E:/image_data/RatAVI_3/'
-       out_path = 'E:/tmp/'
-
-    
-    dpath = pathlib.Path(video_path)
-    outpath = pathlib.Path(out_path)
-    outpath = outpath.joinpath('rat')
+def process_folder(dpath, outpath):
     if not outpath.exists():
         outpath.mkdir()
         
@@ -440,7 +423,58 @@ def main():
         t2 = datetime.now()
         delta = t2 - t1
         print('Computation time takes {}'.format(delta))
- 
+        
+        
+video_path = None 
+out_path = None 
+if _platform == "linux" or _platform == "linux2": # linux
+   video_path = '/home/cclee/image_data/'
+   out_path = '/home/cclee/tmp/'
+elif _platform == "darwin": # MAC OS X
+   video_path = '/Users/CCLee/image_data/' 
+   out_path = '/Users/CCLee/tmp/'
+elif _platform == "win32": # Windows
+   video_path = 'E:/image_data/'
+   out_path = 'E:/tmp/'
+       
+ratavi = ['ratavi_1', 'ratavi_2','ratavi_3']
+def main():
+    print('len(sys.argv):', len(sys.argv))
+    print ('opencv version ', cv2.__version__)
+    outpath = pathlib.Path(out_path)
+    outpath = outpath.joinpath('rat')
+    dpath = pathlib.Path(video_path)
+    
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "123a")
+    except getopt.GetoptError as err:
+        # print help information and exit:
+        print( str(err))
+        print('main.py -123a')             
+        return 2
+
+    for o, a in opts:
+        if o == "-1":
+            print('process ...', ratavi[0])
+            ratpath = dpath.joinpath(ratavi[0])
+            process_folder(ratpath, outpath)
+        elif o == '-2':
+            print('process ...', ratavi[1])
+            ratpath = dpath.joinpath(ratavi[1])
+            process_folder(ratpath, outpath)
+        elif o == '-3':
+            print('process ...', ratavi[2])
+            ratpath = dpath.joinpath(ratavi[2])
+            process_folder(ratpath, outpath)   
+        elif o == '-a':
+            for i in ratavi:
+                print('process ...', i)
+                ratpath = dpath.joinpath(i)
+                process_folder(ratpath, outpath)            
+        else:
+            return 0
+    
+
 
 if __name__ == "__main__":
     sys.exit(main())
