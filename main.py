@@ -12,7 +12,7 @@ import os
 from datetime import datetime
 import pandas as pd
 import rat
-
+import classifier
 
 video_path = None 
 out_path = None 
@@ -35,7 +35,6 @@ ratavi = ['ratavi_1', 'ratavi_2','ratavi_3']
 
     
 def video_clip():
-
     vpath = pathlib.Path(video_path)
     dpath = pathlib.Path(out_path)
     
@@ -82,7 +81,7 @@ def video_clip():
             print('Computation time takes {}'.format(delta))
             print('==========================================================')
 
-def label_training():
+def label_training_data():
     dpath = pathlib.Path(out_path)
     trpath = pathlib.Path(train_path)
     train_list = sorted(trpath.glob('9*.csv'))
@@ -94,9 +93,9 @@ def label_training():
         fname = f.name
         ftoken = fname.split('_', 2)
         fdate = ftoken[0]
-        fend = ftoken[2][:-4]
+        fend = int(ftoken[2][:-4])
         fLR=  ftoken[1][0]
-        fstart = ftoken[1][1:]
+        fstart = int(ftoken[1][1:])
 #        print(fdate, fLR, fstart, fend)
         date_lst.append(fdate)
         lr_lst.append(fLR)
@@ -112,27 +111,64 @@ def label_training():
     df_train = pd.DataFrame({'date':sr_date, 'lr':sr_lr, 'start':sr_start, 'end':sr_end},
                       columns=['date','lr','start','end'])
 
-    fname = '_train.csv'
+    fname = '_positive.csv'
     fname1 = trpath.joinpath(fname)
-#    df_train.to_csv(str(fname1))
+    df_train.to_csv(str(fname1))
 
 
     ddir = [x for x in dpath.iterdir() if x.is_dir()]
-    for dd in ddir:         
+    for dd in ddir:      
+        print('Check folder: ', dd)
         for ddate in date_uq:
             if ddate in str(dd):
+                print('\tprocess ', ddate)
                 diffrr = '_diff_R_' + ddate + '.csv'
                 diffll = '_diff_L_' + ddate + '.csv'
                 rrname = dd.joinpath(diffrr)
                 llname = dd.joinpath(diffll)
-                dfr = pd.read_csv(rrname, delimiter=',',index_col=0)
+                df = pd.read_csv(rrname, delimiter=',',index_col=0)
+                df = df.fillna(method='ffill')
+                df = df.fillna(method='bfill')
+        
+                df['label']=0
+                mask = (df_train['date']==ddate) & (df_train['lr']=='R')
+                df_sel = df_train[mask]
+                for row in df_sel.itertuples():
+                    df.loc[row.start:row.end,'label'] = 1
                 
-                print(dfr)
+                fname1 = trpath.joinpath('_diff_R_' + ddate + '_label.csv')
+                df.to_csv(str(fname1))
+                    
+                df = pd.read_csv(llname, delimiter=',',index_col=0)
+                df = df.fillna(method='ffill')
+                df = df.fillna(method='bfill')
+                
+                df['label']=0
+                mask = (df_train['date']==ddate) & (df_train['lr']=='L')
+                df_sel = df_train[mask]
+                for row in df_sel.itertuples():
+                    df.loc[row.start:row.end,'label'] = 1
+      
+                fname1 = trpath.joinpath('_diff_L_' + ddate + '_label.csv')
+                df.to_csv(str(fname1))  
     
-   
+def training():
+    train_lst = ['_diff_L_930219_label.csv', '_diff_R_930219_label.csv']
+    
+    vpath = pathlib.Path(video_path)
+    dpath = pathlib.Path(out_path) 
+    trpath = pathlib.Path(train_path)    
+#    for v in ratavi:        
+    avipath = vpath.joinpath(ratavi[2])
+        
+    mouse = classifier.Classifier(avipath, trpath, dpath)
+    mouse.train(train_lst)
+ 
+    
 def main():
     print('len(sys.argv):', len(sys.argv))
-    label_training()
+    training()
+    
 #    try:
 #        opts, args = getopt.getopt(sys.argv[1:], "1234")
 #    except getopt.GetoptError as err:
@@ -143,11 +179,14 @@ def main():
 #
 #    for o, a in opts:
 #        if o == "-1":
-#            print('video_clip ...')
+#            print('generate video_clip ...')
 #            video_clip();
 #        elif o == '-2':
 #            print('training data labeling...')
-#            label_training()
+#            label_training_data()
+#        elif o == '-3':
+#            print('training...')
+#            training()
 #        else:
 #            return 0
         

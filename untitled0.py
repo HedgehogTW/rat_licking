@@ -44,9 +44,9 @@ for f in train_list:
     fname = f.name
     ftoken = fname.split('_', 2)
     fdate = ftoken[0]
-    fend = ftoken[2][:-4]
+    fend = int(ftoken[2][:-4])
     fLR=  ftoken[1][0]
-    fstart = ftoken[1][1:]
+    fstart = int(ftoken[1][1:])
 #        print(fdate, fLR, fstart, fend)
     date_lst.append(fdate)
     lr_lst.append(fLR)
@@ -64,7 +64,7 @@ df_train = pd.DataFrame({'date':sr_date, 'lr':sr_lr, 'start':sr_start, 'end':sr_
 
 fname = '_train.csv'
 fname1 = trpath.joinpath(fname)
-#    df_train.to_csv(str(fname1))
+df_train.to_csv(str(fname1))
 
 
 ddir = [x for x in dpath.iterdir() if x.is_dir()]
@@ -75,6 +75,22 @@ for dd in ddir:
             diffll = '_diff_L_' + ddate + '.csv'
             rrname = dd.joinpath(diffrr)
             llname = dd.joinpath(diffll)
-            dfr = pd.read_csv(rrname, delimiter=',',index_col=0)
+            df = pd.read_csv(rrname, delimiter=',',index_col=0)
+            df['label']=0
+            mask = (df_train['date']==ddate) & (df_train['lr']=='R')
+            df_sel = df_train[mask]
+            for row in df_sel.itertuples():
+                df.loc[row.start:row.end,'label'] = 1
             
-            print(dfr)
+            fname1 = dd.joinpath('_diff_R_' + ddate + '_label.csv')
+            df.to_csv(str(fname1))
+                
+            df = pd.read_csv(llname, delimiter=',',index_col=0)
+            df['label']=0
+            mask = (df_train['date']==ddate) & (df_train['lr']=='L')
+            df_sel = df_train[mask]
+            for row in df_sel.itertuples():
+                df.loc[row.start:row.end,'label'] = 1
+  
+            fname1 = dd.joinpath('_diff_L_' + ddate + '_label.csv')
+            df.to_csv(str(fname1))          
