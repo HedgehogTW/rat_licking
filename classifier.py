@@ -7,12 +7,13 @@ Created on Tue Jul  4 14:18:46 2017
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from datetime import datetime
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import GaussianNB 
 from sklearn.metrics import accuracy_score
 from sklearn.svm import SVC 
-
+from sklearn.model_selection import learning_curve
 
 #import os.path
 #import cv2
@@ -118,7 +119,48 @@ class Classifier:
             y_model = self.model.predict(Xtest)  
             acc = accuracy_score(ytest, y_model)
             print('    svm rbf:', acc)
-            
+
+    def plot_learning_curve(self, estimator, title, X, y, ylim=None, cv=None,
+                        n_jobs=1, train_sizes):
+        plt.figure()
+        plt.title(title)
+        if ylim is not None:
+            plt.ylim(*ylim)
+        plt.xlabel("Training examples")
+        plt.ylabel("Score")
+        train_sizes, train_scores, test_scores = learning_curve(
+            estimator, X, y, cv=cv, n_jobs=n_jobs, train_sizes=train_sizes)
+        train_scores_mean = np.mean(train_scores, axis=1)
+        train_scores_std = np.std(train_scores, axis=1)
+        test_scores_mean = np.mean(test_scores, axis=1)
+        test_scores_std = np.std(test_scores, axis=1)
+        plt.grid()
+    
+        plt.fill_between(train_sizes, train_scores_mean - train_scores_std,
+                         train_scores_mean + train_scores_std, alpha=0.1,
+                         color="r")
+        plt.fill_between(train_sizes, test_scores_mean - test_scores_std,
+                         test_scores_mean + test_scores_std, alpha=0.1, color="g")
+        plt.plot(train_sizes, train_scores_mean, 'o-', color="r",
+                 label="Training score")
+        plt.plot(train_sizes, test_scores_mean, 'o-', color="g",
+                 label="Cross-validation score")
+    
+        plt.legend(loc="best")
+        return plt
+    
+    def learn_curve(self, Xtrain, ytrain):
+        title = "Learning Curves (SVM, RBF kernel)"
+        estimator = SVC(kernel='rbf', C=1E10)
+        cv = ShuffleSplit(n_splits=10, test_size=0.2, random_state=0)
+        self.plot_learning_curve(estimator, title, Xtrain, ytrain, (0.7, 1.01), 
+                            train_sizes=[0.1, 0.33, 0.55, 0.78, 1. ], 
+                            cv=cv, n_jobs=4)
+#        train_sizes, train_scores, valid_scores = learning_curve(
+#                estimator, Xtrain, ytrain, 
+#                train_sizes=[0.1, 0.33, 0.55, 0.78, 1. ], cv=5)
+
+        
     def train(self, train_files, test_files):
         print('read train: ', train_files[0].name, end='  ')
         df_train = pd.read_csv(str(train_files[0]), delimiter=',',index_col=0)
@@ -139,7 +181,7 @@ class Classifier:
             x_train = np.asarray(df_train.loc[:,fea_lst])
             y_train = np.asarray(df_train.loc[:,'label'])        
             Xtrain, Xtest, ytrain, ytest = train_test_split(x_train, y_train, random_state=1)
-            self.gaussiannb(Xtrain, ytrain, Xtest, ytest)
+            self.learn_curve(Xtrain, ytrain)
 #           self.svm(Xtrain, ytrain, Xtest, ytest)
         else:                
             Xtrain = np.asarray(df_train.loc[:,fea_lst])

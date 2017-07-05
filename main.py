@@ -164,7 +164,7 @@ def generate_feature():
     
 def training():
     train_lst = ['930219_L']
-    test_lst = ['930219_R', '930220_L', '930220_R']
+    test_lst = [] # ['930219_R', '930220_L', '930220_R']
     
     trpath = pathlib.Path(train_path)    
     fea_list = sorted(trpath.glob('_feature_*.csv'))
