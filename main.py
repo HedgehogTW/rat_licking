@@ -179,9 +179,12 @@ def training():
         for t in test_lst:
             if t in str(f):
                 test_files.append(f)
-                       
-    mouse = classifier.Classifier()
-    mouse.train(train_files, test_files)
+    
+    if train_files:
+        mouse = classifier.Classifier()
+        mouse.train(train_files, test_files)
+    else:
+        print('no training file')
  
     
 def main():

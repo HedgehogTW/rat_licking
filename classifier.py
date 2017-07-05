@@ -14,6 +14,8 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.metrics import accuracy_score
 from sklearn.svm import SVC 
 from sklearn.model_selection import learning_curve
+from sklearn.model_selection import ShuffleSplit
+from sklearn.model_selection import StratifiedShuffleSplit
 
 #import os.path
 #import cv2
@@ -120,8 +122,8 @@ class Classifier:
             acc = accuracy_score(ytest, y_model)
             print('    svm rbf:', acc)
 
-    def plot_learning_curve(self, estimator, title, X, y, ylim=None, cv=None,
-                        n_jobs=1, train_sizes):
+    def plot_learning_curve(self, estimator, title, X, y, train_sizes, ylim=None, cv=None,
+                        n_jobs=1):
         plt.figure()
         plt.title(title)
         if ylim is not None:
@@ -130,6 +132,11 @@ class Classifier:
         plt.ylabel("Score")
         train_sizes, train_scores, test_scores = learning_curve(
             estimator, X, y, cv=cv, n_jobs=n_jobs, train_sizes=train_sizes)
+        print('train_sizes', train_sizes)
+#        print('train_scores')
+#        print(train_scores)
+#        print('test_scores')
+#        print(test_scores)        
         train_scores_mean = np.mean(train_scores, axis=1)
         train_scores_std = np.std(train_scores, axis=1)
         test_scores_mean = np.mean(test_scores, axis=1)
@@ -152,10 +159,11 @@ class Classifier:
     def learn_curve(self, Xtrain, ytrain):
         title = "Learning Curves (SVM, RBF kernel)"
         estimator = SVC(kernel='rbf', C=1E10)
-        cv = ShuffleSplit(n_splits=10, test_size=0.2, random_state=0)
-        self.plot_learning_curve(estimator, title, Xtrain, ytrain, (0.7, 1.01), 
+        cv = StratifiedShuffleSplit(n_splits=10, test_size=0.2, random_state=0)
+        plt = self.plot_learning_curve(estimator, title, Xtrain, ytrain, ylim=(0.7, 1.01), 
                             train_sizes=[0.1, 0.33, 0.55, 0.78, 1. ], 
                             cv=cv, n_jobs=4)
+        plt.show()
 #        train_sizes, train_scores, valid_scores = learning_curve(
 #                estimator, Xtrain, ytrain, 
 #                train_sizes=[0.1, 0.33, 0.55, 0.78, 1. ], cv=5)
