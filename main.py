@@ -111,7 +111,7 @@ def label_training_data():
     df_train = pd.DataFrame({'date':sr_date, 'lr':sr_lr, 'start':sr_start, 'end':sr_end},
                       columns=['date','lr','start','end'])
 
-    fname = '_positive.csv'
+    fname = '_grooming_loc.csv'
     fname1 = trpath.joinpath(fname)
     df_train.to_csv(str(fname1))
 
@@ -136,7 +136,7 @@ def label_training_data():
                 for row in df_sel.itertuples():
                     df.loc[row.start:row.end,'label'] = 1
                 
-                fname1 = trpath.joinpath('_diff_R_' + ddate + '_label.csv')
+                fname1 = trpath.joinpath('_label_' + ddate + '_R.csv')
                 df.to_csv(str(fname1))
                     
                 df = pd.read_csv(llname, delimiter=',',index_col=0)
@@ -149,20 +149,39 @@ def label_training_data():
                 for row in df_sel.itertuples():
                     df.loc[row.start:row.end,'label'] = 1
       
-                fname1 = trpath.joinpath('_diff_L_' + ddate + '_label.csv')
+                fname1 = trpath.joinpath('_label_' + ddate + '_L.csv')
                 df.to_csv(str(fname1))  
+   
+    
+def generate_feature():   
+
+    trpath = pathlib.Path(train_path)    
+    label_list = sorted(trpath.glob('_label_*.csv'))
+
+    mouse = classifier.Classifier()
+    for f in label_list:        
+        mouse.generate_feature(f)
     
 def training():
-    train_lst = ['_diff_L_930219_label.csv', '_diff_R_930219_label.csv']
+    train_lst = ['930219_L']
+    test_lst = ['930219_R', '930220_L', '930220_R']
     
-    vpath = pathlib.Path(video_path)
-    dpath = pathlib.Path(out_path) 
     trpath = pathlib.Path(train_path)    
-#    for v in ratavi:        
-    avipath = vpath.joinpath(ratavi[2])
-        
-    mouse = classifier.Classifier(avipath, trpath, dpath)
-    mouse.train(train_lst)
+    fea_list = sorted(trpath.glob('_feature_*.csv'))
+    train_files = []
+    for f in fea_list:
+        for t in train_lst:
+            if t in str(f):
+                train_files.append(f)
+                
+    test_files = []
+    for f in fea_list:
+        for t in test_lst:
+            if t in str(f):
+                test_files.append(f)
+                       
+    mouse = classifier.Classifier()
+    mouse.train(train_files, test_files)
  
     
 def main():
@@ -185,8 +204,11 @@ def main():
 #            print('training data labeling...')
 #            label_training_data()
 #        elif o == '-3':
+#            print('generate_feature...')
+#            generate_feature()
+#        elif o == '-4':
 #            print('training...')
-#            training()
+#            training()            
 #        else:
 #            return 0
         
