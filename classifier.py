@@ -8,7 +8,7 @@ Created on Tue Jul  4 14:18:46 2017
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
+#import seaborn as sns
 
 from datetime import datetime
 from sklearn.model_selection import train_test_split
@@ -144,7 +144,8 @@ class Classifier:
         
         self.model = SVC(kernel='rbf', C=1E10)
         self.model.fit(Xtrain, ytrain)  
-#        scores = cross_val_score(self.model,Xtrain, ytrain, cv=5, n_jobs=4)
+#        cv = StratifiedShuffleSplit(n_splits=4, test_size=0.4, random_state=0)
+#        scores = cross_val_score(self.model,Xtrain, ytrain, cv=cv, n_jobs=4)
 #        print("CV Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
 
         t2 = datetime.now()
@@ -231,26 +232,26 @@ class Classifier:
               
         fea_lst = ['p1_mean','p5_mean','p1_var','p5_var',\
                    'p1n_mean','p5n_mean','p1n_var','p5n_var',\
-                   'cx_var','cy_var', 'cx_mean','cy_mean']
+                   'cx_var','cy_var']
         print('feature:')
         print(fea_lst)
         tr_sz = 0.2
         if test_files: # has test files
             Xtrain = np.asarray(df_train.loc[:,fea_lst])
             ytrain = np.asarray(df_train.loc[:,'label'])  
-            X1train, Xtest, y1train, ytest = train_test_split(Xtrain, ytrain, \
-                                                              train_size = tr_sz, random_state=1)
-            print('train_test_split, # of training ', len(X1train), tr_sz)
-#            cv = StratifiedShuffleSplit(n_splits=2, test_size=0.9, random_state=0)
-#            train_idx, test_idx = next(iter(cv.split(Xtrain, ytrain)))
-#            X1train = Xtrain[train_idx]
-#            y1train = ytrain[train_idx]
-#            print('StratifiedShuffleSplit, # of training ', len(X1train))
+#            X1train, Xtest, y1train, ytest = train_test_split(Xtrain, ytrain, \
+#                                                              train_size = tr_sz, random_state=1)
+#            print('train_test_split, # of training ', len(X1train), tr_sz)
+            cv = StratifiedShuffleSplit(n_splits=2, train_size=0.5, random_state=0)
+            train_idx, test_idx = next(iter(cv.split(Xtrain, ytrain)))
+            X1train = Xtrain[train_idx]
+            y1train = ytrain[train_idx]
+            print('StratifiedShuffleSplit, # of training ', len(X1train))
             self.svm(X1train, y1train)
             for i, testf in enumerate(test_files): 
                 print('read test: ', testf.name, end='  ')
                 df_test = pd.read_csv(str(testf), delimiter=',',index_col=0)
-#                df_test = df_test.append(df_train)
+
                 print(len(df_test), ', # of label 1:',df_test['label'].sum(axis = 0))
                    
                 Xtest = np.asarray(df_test.loc[:,fea_lst])
@@ -275,13 +276,13 @@ class Classifier:
             x_train = np.asarray(df_train.loc[:,fea_lst])
             y_train = np.asarray(df_train.loc[:,'label'])    
             
-#            cv = StratifiedShuffleSplit(n_splits=5, test_size=0.3, random_state=0)
-#            x_idx, y_idx = next(iter(cv.split(x_train, y_train)))
-#            Xtrain = x_train[x_idx]
-#            ytrain = y_train[y_idx]
+            cv = StratifiedShuffleSplit(n_splits=5, test_size=0.3, random_state=0)
+            x_idx, y_idx = next(iter(cv.split(x_train, y_train)))
+            Xtrain = x_train[x_idx]
+            ytrain = y_train[y_idx]
 #            Xtrain, Xtest, ytrain, ytest = train_test_split(x_train, y_train, random_state=1)
-            self.learn_curve(x_train, y_train)
-#            self.svm(Xtrain, ytrain, Xtest, ytest)
+#            self.learn_curve(x_train, y_train)
+            self.svm(Xtrain, ytrain, Xtest, ytest)
                
 
         
