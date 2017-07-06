@@ -8,14 +8,24 @@ Created on Tue Jul  4 14:18:46 2017
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
+
 from datetime import datetime
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import GaussianNB 
 from sklearn.metrics import accuracy_score
 from sklearn.svm import SVC 
 from sklearn.model_selection import learning_curve
+from sklearn.model_selection import cross_val_score
+
 from sklearn.model_selection import ShuffleSplit
 from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import RandomizedSearchCV
+from sklearn.metrics import classification_report
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import precision_score
+from sklearn.metrics import recall_score
 
 #import os.path
 #import cv2
@@ -53,8 +63,10 @@ class Classifier:
         
 #        print(df.head())
         fm = df.loc[:,'frame']
-        p1 = df.loc[:,'nonzero_p1']
-        p5 = df.loc[:,'nonzero_p5']
+        p1 = df.loc[:,'diffSum_p1']
+        p5 = df.loc[:,'diffSum_p5']
+        p1n = df.loc[:,'nonzero_p1']
+        p5n = df.loc[:,'nonzero_p5']        
         cx = df.loc[:,'cx']
         cy = df.loc[:,'cy']
         label = df.loc[:,'label']
@@ -62,6 +74,8 @@ class Classifier:
         fm_win = self.windowed_view(fm, 10, 5)
         p1_win = self.windowed_view(p1, 10, 5)
         p5_win = self.windowed_view(p5, 10, 5)
+        p1n_win = self.windowed_view(p1n, 10, 5)
+        p5n_win = self.windowed_view(p5n, 10, 5)        
         cx_win = self.windowed_view(cx, 10, 5)
         cy_win = self.windowed_view(cy, 10, 5)        
         label_win = self.windowed_view(label, 10, 5)
@@ -70,7 +84,15 @@ class Classifier:
         p1_win_mean = np.mean(p1_win, axis=1)
         p5_win_mean = np.mean(p5_win, axis=1)
         p1_win_var = np.var(p1_win, axis=1)
-        p5_win_var = np.var(p5_win, axis=1)        
+        p5_win_var = np.var(p5_win, axis=1)  
+
+        p1n_win_mean = np.mean(p1n_win, axis=1)
+        p5n_win_mean = np.mean(p5n_win, axis=1)
+        p1n_win_var = np.var(p1n_win, axis=1)
+        p5n_win_var = np.var(p5n_win, axis=1) 
+        
+        cx_win_mean = np.mean(cx_win, axis=1)
+        cy_win_mean = np.mean(cy_win, axis=1)
         cx_win_var = np.var(cx_win, axis=1)
         cy_win_var = np.var(cy_win, axis=1)
         
@@ -82,11 +104,19 @@ class Classifier:
                             'p1_mean': p1_win_mean,
                             'p5_mean': p5_win_mean,
                             'p1_var': p1_win_var,
-                            'p5_var': p5_win_var,                            
+                            'p5_var': p5_win_var, 
+                            'p1n_mean': p1n_win_mean,
+                            'p5n_mean': p5n_win_mean,
+                            'p1n_var': p1n_win_var,
+                            'p5n_var': p5n_win_var,  
+                            'cx_mean': cx_win_mean,
+                            'cy_mean': cy_win_mean,                            
                             'cx_var': cx_win_var,
                             'cy_var': cy_win_var,
                             'label': label_win_mean},
-            columns=['fm_start','p1_mean','p5_mean','p1_var','p5_var','cx_var','cy_var','label'])
+            columns=['fm_start','p1_mean','p5_mean','p1_var','p5_var',\
+                     'p1n_mean','p5n_mean','p1n_var','p5n_var',\
+                     'cx_mean','cy_mean','cx_var','cy_var','label'])
 
         fname = '_feature_{}_{}.csv'.format(date, lr)
         fname1 = filename.parents[0].joinpath(fname)
@@ -109,14 +139,24 @@ class Classifier:
     def svm(self, Xtrain, ytrain, Xtest=None, ytest= None):
         print('process svm ...')
         print('    training data: {}'.format(len(ytrain)))
+       
         t1 = datetime.now()
         
         self.model = SVC(kernel='rbf', C=1E10)
         self.model.fit(Xtrain, ytrain)  
+#        scores = cross_val_score(self.model,Xtrain, ytrain, cv=5, n_jobs=4)
+#        print("CV Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
+
         t2 = datetime.now()
         delta = t2 - t1
         print('    Computation time takes {}'.format(delta))
-        
+        y_model = self.model.predict(Xtrain)  
+        acc = accuracy_score(ytrain, y_model)
+        pre = precision_score(ytrain, y_model, average='binary')  
+        rec = recall_score(ytrain, y_model, average='binary') 
+        print('    svm rbf: train acc {:.3f}, precision {:.3f}, recall {:.3f}'.format(acc, pre, rec))
+        mat = confusion_matrix(ytrain, y_model)
+        print(mat)         
         if Xtest:
             y_model = self.model.predict(Xtest)  
             acc = accuracy_score(ytest, y_model)
@@ -132,15 +172,18 @@ class Classifier:
         plt.ylabel("Score")
         train_sizes, train_scores, test_scores = learning_curve(
             estimator, X, y, cv=cv, n_jobs=n_jobs, train_sizes=train_sizes)
-        print('train_sizes', train_sizes)
-#        print('train_scores')
-#        print(train_scores)
-#        print('test_scores')
-#        print(test_scores)        
+
+       
         train_scores_mean = np.mean(train_scores, axis=1)
         train_scores_std = np.std(train_scores, axis=1)
         test_scores_mean = np.mean(test_scores, axis=1)
         test_scores_std = np.std(test_scores, axis=1)
+  
+        print('train_sizes', train_sizes)  
+        print('train_scores_mean')
+        print(train_scores_mean)
+        print('test_scores_mean')
+        print(test_scores_mean)         
         plt.grid()
     
         plt.fill_between(train_sizes, train_scores_mean - train_scores_std,
@@ -157,17 +200,20 @@ class Classifier:
         return plt
     
     def learn_curve(self, Xtrain, ytrain):
+        print('process learn_curve...')
+        t1 = datetime.now()
+        
         title = "Learning Curves (SVM, RBF kernel)"
         estimator = SVC(kernel='rbf', C=1E10)
-        cv = StratifiedShuffleSplit(n_splits=10, test_size=0.2, random_state=0)
+        cv = StratifiedShuffleSplit(n_splits=5, test_size=0.3, random_state=0)
         plt = self.plot_learning_curve(estimator, title, Xtrain, ytrain, ylim=(0.7, 1.01), 
-                            train_sizes=[0.1, 0.33, 0.55, 0.78, 1. ], 
+                            train_sizes=[0.1, 0.2, 0.3, 0.4, 0.5, 0.78, 1. ], 
                             cv=cv, n_jobs=4)
         plt.show()
-#        train_sizes, train_scores, valid_scores = learning_curve(
-#                estimator, Xtrain, ytrain, 
-#                train_sizes=[0.1, 0.33, 0.55, 0.78, 1. ], cv=5)
 
+        t2 = datetime.now()
+        delta = t2 - t1
+        print('    Computation time takes {}'.format(delta))
         
     def train(self, train_files, test_files):
         print('read train: ', train_files[0].name, end='  ')
@@ -180,32 +226,64 @@ class Classifier:
             print(len(df))
             df_train = df_train.append(df)
             
-        print(df_train.head(4))
-        print(len(df_train))
+#        print(df_train.head(4))
+        print(len(df_train), ', # of label 1:',df_train['label'].sum(axis = 0))
               
-        fea_lst = ['p1_mean','p5_mean','p1_var','p5_var','cx_var','cy_var']
-        
-        if not test_files:
-            x_train = np.asarray(df_train.loc[:,fea_lst])
-            y_train = np.asarray(df_train.loc[:,'label'])        
-            Xtrain, Xtest, ytrain, ytest = train_test_split(x_train, y_train, random_state=1)
-            self.learn_curve(Xtrain, ytrain)
-#           self.svm(Xtrain, ytrain, Xtest, ytest)
-        else:                
+        fea_lst = ['p1_mean','p5_mean','p1_var','p5_var',\
+                   'p1n_mean','p5n_mean','p1n_var','p5n_var',\
+                   'cx_var','cy_var', 'cx_mean','cy_mean']
+        print('feature:')
+        print(fea_lst)
+        tr_sz = 0.2
+        if test_files: # has test files
             Xtrain = np.asarray(df_train.loc[:,fea_lst])
             ytrain = np.asarray(df_train.loc[:,'label'])  
-            self.svm(Xtrain, ytrain)
+            X1train, Xtest, y1train, ytest = train_test_split(Xtrain, ytrain, \
+                                                              train_size = tr_sz, random_state=1)
+            print('train_test_split, # of training ', len(X1train), tr_sz)
+#            cv = StratifiedShuffleSplit(n_splits=2, test_size=0.9, random_state=0)
+#            train_idx, test_idx = next(iter(cv.split(Xtrain, ytrain)))
+#            X1train = Xtrain[train_idx]
+#            y1train = ytrain[train_idx]
+#            print('StratifiedShuffleSplit, # of training ', len(X1train))
+            self.svm(X1train, y1train)
             for i, testf in enumerate(test_files): 
                 print('read test: ', testf.name, end='  ')
                 df_test = pd.read_csv(str(testf), delimiter=',',index_col=0)
-                print(len(df_test))
+#                df_test = df_test.append(df_train)
+                print(len(df_test), ', # of label 1:',df_test['label'].sum(axis = 0))
                    
                 Xtest = np.asarray(df_test.loc[:,fea_lst])
                 ytest = np.asarray(df_test.loc[:,'label'])              
           
                 y_model = self.model.predict(Xtest)  
                 acc = accuracy_score(ytest, y_model)
-                print('    svm rbf:', acc)
+                pre = precision_score(ytest, y_model, average='binary')  
+                rec = recall_score(ytest, y_model, average='binary') 
+                print('    svm rbf: acc {:.3f}, precision {:.3f}, recall {:.3f}'.format(acc, pre, rec))
+                
+                mat = confusion_matrix(ytest, y_model)
+                print(mat)
+#                sns.heatmap(mat, square=True, annot=True, cbar=False, fmt="d")
+#                plt.xlabel('predicted value')
+#                plt.ylabel('true value');
+#                plt.show()
+
+                
+
+        else: # no test files
+            x_train = np.asarray(df_train.loc[:,fea_lst])
+            y_train = np.asarray(df_train.loc[:,'label'])    
+            
+#            cv = StratifiedShuffleSplit(n_splits=5, test_size=0.3, random_state=0)
+#            x_idx, y_idx = next(iter(cv.split(x_train, y_train)))
+#            Xtrain = x_train[x_idx]
+#            ytrain = y_train[y_idx]
+#            Xtrain, Xtest, ytrain, ytest = train_test_split(x_train, y_train, random_state=1)
+            self.learn_curve(x_train, y_train)
+#            self.svm(Xtrain, ytrain, Xtest, ytest)
+               
+
         
 #               self.svm(Xtrain, Xtest, ytrain, ytest)
 

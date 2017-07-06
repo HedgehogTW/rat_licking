@@ -164,7 +164,7 @@ def generate_feature():
     
 def training():
     train_lst = ['930219_L']
-    test_lst = [] # ['930219_R', '930220_L', '930220_R']
+    test_lst = ['930219_R', '930220_L', '930220_R']
     
     trpath = pathlib.Path(train_path)    
     fea_list = sorted(trpath.glob('_feature_*.csv'))
@@ -189,31 +189,31 @@ def training():
     
 def main():
     print('len(sys.argv):', len(sys.argv))
-    training()
+#    training()
     
-#    try:
-#        opts, args = getopt.getopt(sys.argv[1:], "1234")
-#    except getopt.GetoptError as err:
-#        # print help information and exit:
-#        print( str(err))
-#        print('main.py -1234')             
-#        return 2
-#
-#    for o, a in opts:
-#        if o == "-1":
-#            print('generate video_clip ...')
-#            video_clip();
-#        elif o == '-2':
-#            print('training data labeling...')
-#            label_training_data()
-#        elif o == '-3':
-#            print('generate_feature...')
-#            generate_feature()
-#        elif o == '-4':
-#            print('training...')
-#            training()            
-#        else:
-#            return 0
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "1234")
+    except getopt.GetoptError as err:
+        # print help information and exit:
+        print( str(err))
+        print('main.py -1234')             
+        return 2
+
+    for o, a in opts:
+        if o == "-1":
+            print('generate video_clip ...')
+            video_clip();
+        elif o == '-2':
+            print('training data labeling...')
+            label_training_data()
+        elif o == '-3':
+            print('generate_feature...')
+            generate_feature()
+        elif o == '-4':
+            print('training...')
+            training()            
+        else:
+            return 0
         
 if __name__ == "__main__":
     main()
