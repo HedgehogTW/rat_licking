@@ -359,8 +359,8 @@ class Classifier:
     def separate_train_random_forest(self, train_files):
         # specify parameters and distributions to sample from
         param_dist = {"max_depth": [3, None],
-                      "max_features": sp_randint(1, 11),
-                      "min_samples_split": sp_randint(1, 11),
+                      "max_features": sp_randint(1, 10),
+#                      "min_samples_split": sp_randint(1, 11),
                       "min_samples_leaf": sp_randint(1, 11),
                       "bootstrap": [True, False],
                       "criterion": ["gini", "entropy"]}
@@ -404,11 +404,11 @@ class Classifier:
             self.report(random_search.cv_results_)
             
             # run grid search
-            grid_search = GridSearchCV(clf, param_grid=param_grid)
-            start = time()
-            grid_search.fit(X, y)
-            
-            print("GridSearchCV took %.2f seconds for %d candidate parameter settings."
-                  % (time() - start, len(grid_search.cv_results_['params'])))
-            self.report(grid_search.cv_results_)
+#            grid_search = GridSearchCV(clf, param_grid=param_grid)
+#            start = time()
+#            grid_search.fit(X, y)
+#            
+#            print("GridSearchCV took %.2f seconds for %d candidate parameter settings."
+#                  % (time() - start, len(grid_search.cv_results_['params'])))
+#            self.report(grid_search.cv_results_)
 

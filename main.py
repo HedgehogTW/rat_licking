@@ -163,7 +163,7 @@ def generate_feature():
         mouse.generate_feature(f)
     
 def training():
-    train_lst = ['930219_L', '930219_R', '930220_L', '930220_R']
+    train_lst = ['930219_L']
     test_lst = ['930219_R', '930220_L', '930220_R']
     
     trpath = pathlib.Path(train_path)    
