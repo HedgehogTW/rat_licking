@@ -22,6 +22,8 @@ from sklearn.model_selection import ShuffleSplit
 from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import RandomizedSearchCV
+from sklearn.model_selection import TimeSeriesSplit
+
 from sklearn.metrics import classification_report
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import precision_score
@@ -235,14 +237,14 @@ class Classifier:
                    'cx_var','cy_var']
         print('feature:')
         print(fea_lst)
-        tr_sz = 0.2
+        train_sz = 0.5
         if test_files: # has test files
             Xtrain = np.asarray(df_train.loc[:,fea_lst])
             ytrain = np.asarray(df_train.loc[:,'label'])  
 #            X1train, Xtest, y1train, ytest = train_test_split(Xtrain, ytrain, \
 #                                                              train_size = tr_sz, random_state=1)
 #            print('train_test_split, # of training ', len(X1train), tr_sz)
-            cv = StratifiedShuffleSplit(n_splits=2, train_size=0.5, random_state=0)
+            cv = StratifiedShuffleSplit(n_splits=2, train_size=train_sz, random_state=0)
             train_idx, test_idx = next(iter(cv.split(Xtrain, ytrain)))
             X1train = Xtrain[train_idx]
             y1train = ytrain[train_idx]
@@ -265,13 +267,11 @@ class Classifier:
                 
                 mat = confusion_matrix(ytest, y_model)
                 print(mat)
+
 #                sns.heatmap(mat, square=True, annot=True, cbar=False, fmt="d")
 #                plt.xlabel('predicted value')
 #                plt.ylabel('true value');
 #                plt.show()
-
-                
-
         else: # no test files
             x_train = np.asarray(df_train.loc[:,fea_lst])
             y_train = np.asarray(df_train.loc[:,'label'])    
@@ -288,8 +288,57 @@ class Classifier:
         
 #               self.svm(Xtrain, Xtest, ytrain, ytest)
 
+    def separate_train_cv(self, train_files):
+        fea_lst = ['p1_mean','p5_mean','p1_var','p5_var',\
+                   'p1n_mean','p5n_mean','p1n_var','p5n_var',\
+                   'cx_var','cy_var']
+        print('feature:')
+        print(fea_lst)
+        test_sz = 0.3
+        nfolds = 4
+        for i, tr in enumerate(train_files): 
+            print('read train: ', train_files[i].name, end='  ')
+            df_train = pd.read_csv(str(train_files[i]), delimiter=',',index_col=0)
+            print(len(df_train), ', # of label 1:',df_train['label'].sum(axis = 0))
+
+            x_train = np.asarray(df_train.loc[:,fea_lst])
+            y_train = np.asarray(df_train.loc[:,'label'])  
+            model = SVC(kernel='rbf', C=1E10)
             
-             
-             
-             
-        
+#            score = []
+#            cv = StratifiedShuffleSplit(n_splits=nfolds, test_size=test_sz, random_state=0)
+#            acc = cross_val_score(model, x_train, y_train, cv=cv, n_jobs=4)
+#            score.append(acc.mean())
+#            pre = cross_val_score(model, x_train, y_train, cv=cv, n_jobs=4, scoring='precision')
+#            score.append(pre.mean())
+#            rec = cross_val_score(model, x_train, y_train, cv=cv, n_jobs=4, scoring='recall')
+#            score.append(rec.mean())
+#            print('    CV mean accuracy {:.3f}, precision {:.3f}, recall: {:.3f}'.format(
+#                    score[0], score[1], score[2]))
+
+    
+#            Xtrain, Xtest, ytrain, ytest = train_test_split(x_train, y_train, random_state=0)
+#            print('train_test_split, # of training ', len(Xtrain))
+
+            cv = StratifiedShuffleSplit(n_splits=nfolds, test_size=test_sz, random_state=0)
+            train_idx, test_idx = next(iter(cv.split(x_train, y_train)))
+            Xtrain = x_train[train_idx]
+            ytrain = y_train[train_idx]
+            Xtest = x_train[test_idx]
+            ytest = y_train[test_idx]
+            
+            print('    StratifiedShuffleSplit, # of training ', len(Xtrain))
+            print('    train P {}/{}, test P {}/{}'.format(np.sum(ytrain),len(Xtrain),
+                  np.sum(ytest),len(Xtest)))
+
+            model.fit(Xtrain, ytrain)  
+            y_model = model.predict(Xtest)  
+            acc = accuracy_score(ytest, y_model)
+            pre = precision_score(ytest, y_model, average='binary')  
+            rec = recall_score(ytest, y_model, average='binary') 
+            print('    svm rbf: train acc {:.3f}, precision {:.3f}, recall(Sensitivity) {:.3f}'.format(acc, pre, rec))
+            mat = confusion_matrix(ytest, y_model)
+            specificity = mat[0,0]/(mat[0,1]+mat[0,0])
+            print('    specificity: {:.3f}'.format(specificity))
+            print(mat)                 
+         
