@@ -9,20 +9,22 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 #import seaborn as sns
-
+from scipy.stats import randint as sp_randint
 from datetime import datetime
+from time import time
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import GaussianNB 
 from sklearn.metrics import accuracy_score
 from sklearn.svm import SVC 
 from sklearn.model_selection import learning_curve
 from sklearn.model_selection import cross_val_score
-
 from sklearn.model_selection import ShuffleSplit
 from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import TimeSeriesSplit
+from sklearn.ensemble import RandomForestClassifier
+
 
 from sklearn.metrics import classification_report
 from sklearn.metrics import confusion_matrix
@@ -288,7 +290,7 @@ class Classifier:
         
 #               self.svm(Xtrain, Xtest, ytrain, ytest)
 
-    def separate_train_cv(self, train_files):
+    def separate_train_svm(self, train_files):
         fea_lst = ['p1_mean','p5_mean','p1_var','p5_var',\
                    'p1n_mean','p5n_mean','p1n_var','p5n_var',\
                    'cx_var','cy_var']
@@ -341,4 +343,72 @@ class Classifier:
             specificity = mat[0,0]/(mat[0,1]+mat[0,0])
             print('    specificity: {:.3f}'.format(specificity))
             print(mat)                 
-         
+ 
+    # Utility function to report best scores
+    def report(self, results, n_top=3):
+        for i in range(1, n_top + 1):
+            candidates = np.flatnonzero(results['rank_test_score'] == i)
+            for candidate in candidates:
+                print("Model with rank: {0}".format(i))
+                print("Mean validation score: {0:.3f} (std: {1:.3f})".format(
+                      results['mean_test_score'][candidate],
+                      results['std_test_score'][candidate]))
+                print("Parameters: {0}".format(results['params'][candidate]))
+                print("")
+        
+    def separate_train_random_forest(self, train_files):
+        # specify parameters and distributions to sample from
+        param_dist = {"max_depth": [3, None],
+                      "max_features": sp_randint(1, 11),
+                      "min_samples_split": sp_randint(1, 11),
+                      "min_samples_leaf": sp_randint(1, 11),
+                      "bootstrap": [True, False],
+                      "criterion": ["gini", "entropy"]}
+
+        # use a full grid over all parameters
+        param_grid = {"max_depth": [3, None],
+                      "max_features": [1, 3, 10],
+                      "min_samples_split": [1, 3, 10],
+                      "min_samples_leaf": [1, 3, 10],
+                      "bootstrap": [True, False],
+                      "criterion": ["gini", "entropy"]}
+
+
+
+
+        fea_lst = ['p1_mean','p5_mean','p1_var','p5_var',\
+                   'p1n_mean','p5n_mean','p1n_var','p5n_var',\
+                   'cx_var','cy_var']
+        print('feature:')
+        print(fea_lst)
+
+        for i, tr in enumerate(train_files): 
+            print('read train: ', train_files[i].name, end='  ')
+            df_train = pd.read_csv(str(train_files[i]), delimiter=',',index_col=0)
+            print(len(df_train), ', # of label 1:',df_train['label'].sum(axis = 0))
+
+            X = np.asarray(df_train.loc[:,fea_lst])
+            y = np.asarray(df_train.loc[:,'label']) 
+            
+            clf = RandomForestClassifier(n_estimators=20)
+            # run randomized search
+            n_iter_search = 20
+            random_search = RandomizedSearchCV(clf, param_distributions=param_dist,
+                                               n_iter=n_iter_search)
+        
+        
+            start = time()
+            random_search.fit(X, y)
+            print("RandomizedSearchCV took %.2f seconds for %d candidates"
+                  " parameter settings." % ((time() - start), n_iter_search))
+            self.report(random_search.cv_results_)
+            
+            # run grid search
+            grid_search = GridSearchCV(clf, param_grid=param_grid)
+            start = time()
+            grid_search.fit(X, y)
+            
+            print("GridSearchCV took %.2f seconds for %d candidate parameter settings."
+                  % (time() - start, len(grid_search.cv_results_['params'])))
+            self.report(grid_search.cv_results_)
+

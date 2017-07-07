@@ -183,7 +183,8 @@ def training():
     if train_files:
         mouse = classifier.Classifier()
 #        mouse.train(train_files, test_files)
-        mouse.separate_train_cv(train_files)
+#        mouse.separate_train_cv(train_files)
+        mouse.separate_train_random_forest(train_files)
     else:
         print('no training file')
  
