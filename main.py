@@ -11,6 +11,7 @@ import pathlib
 import os
 from datetime import datetime
 import pandas as pd
+from scipy import ndimage
 import rat
 import classifier
 
@@ -129,15 +130,23 @@ def label_training_data():
                 df = pd.read_csv(rrname, delimiter=',',index_col=0)
                 df = df.fillna(method='ffill')
                 df = df.fillna(method='bfill')
-        
+                        
                 df['label']=0
                 mask = (df_train['date']==ddate) & (df_train['lr']=='R')
                 df_sel = df_train[mask]
                 for row in df_sel.itertuples():
                     df.loc[row.start:row.end,'label'] = 1
                 
+                arr = df.loc[:,'diffSum_p1':'cy']
+                smooth_arr = ndimage.gaussian_filter1d(arr, sigma = 5, axis =0 )
+                header = list(df.columns)[:-2]
+                header_smoo = [i + '_smoo' for i in header ]
+                df_smoo = pd.DataFrame(smooth_arr, columns = header_smoo)
+                print(df_smoo.head(4))
+                print(df.head(4))
+                df_m = pd.concat([df, df_smoo], axis=1)
                 fname1 = trpath.joinpath('_label_' + ddate + '_R.csv')
-                df.to_csv(str(fname1))
+                df_m.to_csv(str(fname1))
                     
                 df = pd.read_csv(llname, delimiter=',',index_col=0)
                 df = df.fillna(method='ffill')
@@ -148,9 +157,18 @@ def label_training_data():
                 df_sel = df_train[mask]
                 for row in df_sel.itertuples():
                     df.loc[row.start:row.end,'label'] = 1
-      
+
+                arr = df.loc[:,'diffSum_p1':'cy']
+                smooth_arr = ndimage.gaussian_filter1d(arr, sigma = 5, axis =0 )
+                header = list(df.columns)[:-2]
+                header_smoo = [i + '_smoo' for i in header ]
+                df_smoo = pd.DataFrame(smooth_arr, columns = header_smoo)
+                print(df_smoo.head(4))
+                print(df.head(4))
+                df_m = pd.concat([df, df_smoo], axis=1)
+                
                 fname1 = trpath.joinpath('_label_' + ddate + '_L.csv')
-                df.to_csv(str(fname1))  
+                df_m.to_csv(str(fname1))
    
     
 def generate_feature():   
@@ -183,8 +201,8 @@ def training():
     if train_files:
         mouse = classifier.Classifier()
 #        mouse.train(train_files, test_files)
-#        mouse.separate_train_cv(train_files)
-        mouse.separate_train_random_forest(train_files)
+        mouse.separate_train_svm(train_files)
+#        mouse.separate_train_random_forest(train_files)
     else:
         print('no training file')
  
@@ -193,6 +211,7 @@ def main():
     print('len(sys.argv):', len(sys.argv))
     
     training()
+
 #    
 #    try:
 #        opts, args = getopt.getopt(sys.argv[1:], "1234")

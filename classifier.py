@@ -67,12 +67,12 @@ class Classifier:
         
 #        print(df.head())
         fm = df.loc[:,'frame']
-        p1 = df.loc[:,'diffSum_p1']
-        p5 = df.loc[:,'diffSum_p5']
-        p1n = df.loc[:,'nonzero_p1']
-        p5n = df.loc[:,'nonzero_p5']        
-        cx = df.loc[:,'cx']
-        cy = df.loc[:,'cy']
+        p1 = df.loc[:,'diffSum_p1_smoo']
+        p5 = df.loc[:,'diffSum_p5_smoo']
+        p1n = df.loc[:,'nonzero_p1_smoo']
+        p5n = df.loc[:,'nonzero_p5_smoo']        
+        cx = df.loc[:,'cx_smoo']
+        cy = df.loc[:,'cy_smoo']
         label = df.loc[:,'label']
         
         fm_win = self.windowed_view(fm, 10, 5)
