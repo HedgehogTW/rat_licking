@@ -326,6 +326,10 @@ class Classifier:
             train_idx, test_idx = next(iter(cv.split(x_train, y_train)))
             Xtrain = x_train[train_idx]
             ytrain = y_train[train_idx]
+            x0train = Xtrain [ytrain==0]
+            x1train = Xtrain [ytrain==1]
+            print('x1train len =', len(x1train))
+            
             Xtest = x_train[test_idx]
             ytest = y_train[test_idx]
             
@@ -350,10 +354,10 @@ class Classifier:
             candidates = np.flatnonzero(results['rank_test_score'] == i)
             for candidate in candidates:
                 print("Model with rank: {0}".format(i))
-                print("Mean validation score: {0:.3f} (std: {1:.3f})".format(
+                print("    Mean validation score: {0:.3f} (std: {1:.3f})".format(
                       results['mean_test_score'][candidate],
                       results['std_test_score'][candidate]))
-                print("Parameters: {0}".format(results['params'][candidate]))
+                print("    Parameters: {0}".format(results['params'][candidate]))
                 print("")
         
     def separate_train_random_forest(self, train_files):
@@ -394,12 +398,13 @@ class Classifier:
             # run randomized search
             n_iter_search = 20
             random_search = RandomizedSearchCV(clf, param_distributions=param_dist,
-                                               n_iter=n_iter_search)
+                                               n_iter=n_iter_search, n_jobs=4,
+                                               scoring = 'recall')
         
         
             start = time()
             random_search.fit(X, y)
-            print("RandomizedSearchCV took %.2f seconds for %d candidates"
+            print("    RandomizedSearchCV took %.2f seconds for %d candidates"
                   " parameter settings." % ((time() - start), n_iter_search))
             self.report(random_search.cv_results_)
             

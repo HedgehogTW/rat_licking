@@ -26,9 +26,9 @@ elif _platform == "darwin": # MAC OS X
    out_path = '/Users/CCLee/tmp/rat/'
    train_path = '/Users/CCLee/tmp/rat/training_grooming/'
 elif _platform == "win32": # Windows
-   video_path = 'E:/image_data/'
-   out_path = 'E:/tmp/rat/'
-   train_path = 'E:/tmp/rat//training_grooming/'
+   video_path = 'd:/image_data/'
+   out_path = 'd:/tmp/rat/'
+   train_path = 'd:/tmp/rat//training_grooming/'
    
 read_cols = (0, 6, 10, 11, 12)
 ratavi = ['ratavi_1', 'ratavi_2','ratavi_3']
@@ -138,12 +138,10 @@ def label_training_data():
                     df.loc[row.start:row.end,'label'] = 1
                 
                 arr = df.loc[:,'diffSum_p1':'cy']
-                smooth_arr = ndimage.gaussian_filter1d(arr, sigma = 5, axis =0 )
+                smooth_arr = ndimage.gaussian_filter1d(arr, sigma = 1.5, axis =0 )
                 header = list(df.columns)[:-2]
                 header_smoo = [i + '_smoo' for i in header ]
                 df_smoo = pd.DataFrame(smooth_arr, columns = header_smoo)
-                print(df_smoo.head(4))
-                print(df.head(4))
                 df_m = pd.concat([df, df_smoo], axis=1)
                 fname1 = trpath.joinpath('_label_' + ddate + '_R.csv')
                 df_m.to_csv(str(fname1))
@@ -159,12 +157,10 @@ def label_training_data():
                     df.loc[row.start:row.end,'label'] = 1
 
                 arr = df.loc[:,'diffSum_p1':'cy']
-                smooth_arr = ndimage.gaussian_filter1d(arr, sigma = 5, axis =0 )
+                smooth_arr = ndimage.gaussian_filter1d(arr, sigma = 1.5, axis =0 )
                 header = list(df.columns)[:-2]
                 header_smoo = [i + '_smoo' for i in header ]
                 df_smoo = pd.DataFrame(smooth_arr, columns = header_smoo)
-                print(df_smoo.head(4))
-                print(df.head(4))
                 df_m = pd.concat([df, df_smoo], axis=1)
                 
                 fname1 = trpath.joinpath('_label_' + ddate + '_L.csv')
@@ -211,6 +207,7 @@ def main():
     print('len(sys.argv):', len(sys.argv))
     
     training()
+#    generate_feature()
 
 #    
 #    try:
