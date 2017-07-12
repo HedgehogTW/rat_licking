@@ -26,9 +26,9 @@ elif _platform == "darwin": # MAC OS X
    out_path = '/Users/CCLee/tmp/rat/'
    train_path = '/Users/CCLee/tmp/rat/training_grooming/'
 elif _platform == "win32": # Windows
-   video_path = 'd:/image_data/'
-   out_path = 'd:/tmp/rat/'
-   train_path = 'd:/tmp/rat//training_grooming/'
+   video_path = 'e:/image_data/'
+   out_path = 'e:/tmp/rat/'
+   train_path = 'e:/tmp/rat//training_grooming/'
    
 read_cols = (0, 6, 10, 11, 12)
 ratavi = ['ratavi_1', 'ratavi_2','ratavi_3']
@@ -82,7 +82,8 @@ def video_clip():
             print('Computation time takes {}'.format(delta))
             print('==========================================================')
 
-def label_training_data():
+def label_training_data(sigma):
+    print('gaussian_filter1d, sigma=',sigma)
     dpath = pathlib.Path(out_path)
     trpath = pathlib.Path(train_path)
     train_list = sorted(trpath.glob('9*.csv'))
@@ -138,7 +139,7 @@ def label_training_data():
                     df.loc[row.start:row.end,'label'] = 1
                 
                 arr = df.loc[:,'diffSum_p1':'cy']
-                smooth_arr = ndimage.gaussian_filter1d(arr, sigma = 1.5, axis =0 )
+                smooth_arr = ndimage.gaussian_filter1d(arr, sigma = sigma, axis =0 )
                 header = list(df.columns)[:-2]
                 header_smoo = [i + '_smoo' for i in header ]
                 df_smoo = pd.DataFrame(smooth_arr, columns = header_smoo)
@@ -177,7 +178,7 @@ def generate_feature():
         mouse.generate_feature(f)
     
 def training():
-    train_lst = ['930219_L']
+    train_lst = ['930219_L','930219_R', '930220_L', '930220_R']
     test_lst = ['930219_R', '930220_L', '930220_R']
     
     trpath = pathlib.Path(train_path)    
@@ -197,8 +198,8 @@ def training():
     if train_files:
         mouse = classifier.Classifier()
 #        mouse.train(train_files, test_files)
-        mouse.separate_train_svm(train_files)
-#        mouse.separate_train_random_forest(train_files)
+#        mouse.separate_train_svm(train_files)
+        mouse.separate_train_random_forest(train_files)
     else:
         print('no training file')
  

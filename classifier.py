@@ -290,6 +290,21 @@ class Classifier:
         
 #               self.svm(Xtrain, Xtest, ytrain, ytest)
 
+    def get_balance_data(self, x, y, neg_prop):
+        xpos = x[y==1]
+        ypos = y[y==1]
+        xneg = x[y==0]
+        yneg = y[y==0]
+        num_pos = int(len(xpos)*neg_prop)
+        print('original data pos/neg x:', len(xpos), len(xneg))
+
+        X_negtrain, X_test, y_negtrain, y_test = train_test_split(xneg, yneg, train_size=num_pos, random_state=42)        
+        xtrain = np.vstack([xpos, X_negtrain])
+        ytrain = np.hstack([ypos, y_negtrain])
+
+        print('extract neg train: {}, pos+neg: {}'.format(len(X_negtrain), len(ytrain)))
+        return xtrain, ytrain
+
     def separate_train_svm(self, train_files):
         fea_lst = ['p1_mean','p5_mean','p1_var','p5_var',\
                    'p1n_mean','p5n_mean','p1n_var','p5n_var',\
@@ -299,12 +314,17 @@ class Classifier:
         test_sz = 0.3
         nfolds = 4
         for i, tr in enumerate(train_files): 
+            start = time()
+
             print('read train: ', train_files[i].name, end='  ')
             df_train = pd.read_csv(str(train_files[i]), delimiter=',',index_col=0)
             print(len(df_train), ', # of label 1:',df_train['label'].sum(axis = 0))
 
             x_train = np.asarray(df_train.loc[:,fea_lst])
             y_train = np.asarray(df_train.loc[:,'label'])  
+            
+            x_btrain, y_btrain = self.get_balance_data(x_train, y_train, neg_prop=2.5)
+#            continue
             model = SVC(kernel='rbf', C=1E10)
             
 #            score = []
@@ -323,17 +343,16 @@ class Classifier:
 #            print('train_test_split, # of training ', len(Xtrain))
 
             cv = StratifiedShuffleSplit(n_splits=nfolds, test_size=test_sz, random_state=0)
-            train_idx, test_idx = next(iter(cv.split(x_train, y_train)))
-            Xtrain = x_train[train_idx]
-            ytrain = y_train[train_idx]
-            x0train = Xtrain [ytrain==0]
-            x1train = Xtrain [ytrain==1]
-            print('x1train len =', len(x1train))
+            train_idx, test_idx = next(iter(cv.split(x_btrain, y_btrain)))
+            Xtrain = x_btrain[train_idx]
+            ytrain = y_btrain[train_idx]
+#            x0train = Xtrain [ytrain==0]
+#            x1train = Xtrain [ytrain==1]
             
-            Xtest = x_train[test_idx]
-            ytest = y_train[test_idx]
+            Xtest = x_btrain[test_idx]
+            ytest = y_btrain[test_idx]
             
-            print('    StratifiedShuffleSplit, # of training ', len(Xtrain))
+            print('    StratifiedShuffleSplit, training {}, test {}'.format(len(Xtrain), len(Xtest)))
             print('    train P {}/{}, test P {}/{}'.format(np.sum(ytrain),len(Xtrain),
                   np.sum(ytest),len(Xtest)))
 
@@ -346,7 +365,12 @@ class Classifier:
             mat = confusion_matrix(ytest, y_model)
             specificity = mat[0,0]/(mat[0,1]+mat[0,0])
             print('    specificity: {:.3f}'.format(specificity))
-            print(mat)                 
+            print(mat)      
+            end = time()
+
+            print('    Computation time takes {:.3f}s '.format(end -start))
+
+            
  
     # Utility function to report best scores
     def report(self, results, n_top=3):
@@ -354,7 +378,7 @@ class Classifier:
             candidates = np.flatnonzero(results['rank_test_score'] == i)
             for candidate in candidates:
                 print("Model with rank: {0}".format(i))
-                print("    Mean validation score: {0:.3f} (std: {1:.3f})".format(
+                print("    Mean validation recall score: {0:.3f} (std: {1:.3f})".format(
                       results['mean_test_score'][candidate],
                       results['std_test_score'][candidate]))
                 print("    Parameters: {0}".format(results['params'][candidate]))
@@ -403,11 +427,33 @@ class Classifier:
         
         
             start = time()
-            random_search.fit(X, y)
+            x_btrain, y_btrain = self.get_balance_data(X, y, neg_prop=2.5)
+            Xtrain, Xtest, ytrain, ytest = train_test_split(x_btrain, y_btrain, test_size=0.3, random_state=0)
+            random_search.fit(Xtrain, ytrain)
+            print('    train_test_split, training/test size: ', len(Xtrain), len(Xtest))
             print("    RandomizedSearchCV took %.2f seconds for %d candidates"
                   " parameter settings." % ((time() - start), n_iter_search))
             self.report(random_search.cv_results_)
-            
+
+            y_model = random_search.predict(Xtrain)  
+            acc = accuracy_score(ytrain, y_model)
+            pre = precision_score(ytrain, y_model, average='binary')  
+            rec = recall_score(ytrain, y_model, average='binary') 
+            print('    RandomForest: train acc {:.3f}, precision {:.3f}, recall(Sensitivity) {:.3f}'.format(acc, pre, rec))
+            mat = confusion_matrix(ytrain, y_model)
+            specificity = mat[0,0]/(mat[0,1]+mat[0,0])
+            print('    specificity: {:.3f}'.format(specificity))
+            print(mat) 
+            print('---------------------')
+            y_model = random_search.predict(Xtest)  
+            acc = accuracy_score(ytest, y_model)
+            pre = precision_score(ytest, y_model, average='binary')  
+            rec = recall_score(ytest, y_model, average='binary') 
+            print('    RandomForest: test acc {:.3f}, precision {:.3f}, recall(Sensitivity) {:.3f}'.format(acc, pre, rec))
+            mat = confusion_matrix(ytest, y_model)
+            specificity = mat[0,0]/(mat[0,1]+mat[0,0])
+            print('    specificity: {:.3f}'.format(specificity))
+            print(mat)  
             # run grid search
 #            grid_search = GridSearchCV(clf, param_grid=param_grid)
 #            start = time()
