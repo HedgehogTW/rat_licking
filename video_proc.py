@@ -185,7 +185,7 @@ def frame_diff(video_filename, dir_out, mid_line, showVideo=False, bg_subtract=F
 
     vidw = None
     if writevideo:
-        out_video_name = dir_out.joinpath('_output.avi')
+        out_video_name = outavi_path.joinpath(dir_out.name+'_out.avi')
         vidw = cv2.VideoWriter(str(out_video_name), cv2.VideoWriter_fourcc(*'XVID'), 
                            fps, (width*2, height), True)  # Make a video
     if bg_subtract:
@@ -427,6 +427,7 @@ def process_folder(dpath, outpath):
         
 video_path = None 
 out_path = None 
+outavi_path = None
 if _platform == "linux" or _platform == "linux2": # linux
    video_path = '/home/cclee/image_data/'
    out_path = '/home/cclee/tmp/'
@@ -444,7 +445,13 @@ def main():
     outpath = pathlib.Path(out_path)
     outpath = outpath.joinpath('rat')
     dpath = pathlib.Path(video_path)
-    
+
+
+    outavi_path = outpath.joinpath('outavi')
+    if not outavi_path.exists():
+        outavi_path.mkdir()
+
+
     try:
         opts, args = getopt.getopt(sys.argv[1:], "123a")
     except getopt.GetoptError as err:

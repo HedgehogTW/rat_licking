@@ -33,6 +33,23 @@ elif _platform == "win32": # Windows
 read_cols = (0, 6, 10, 11, 12)
 ratavi = ['ratavi_1', 'ratavi_2','ratavi_3']
 
+def move_outvideo():
+    dpath = pathlib.Path(out_path)
+    outavi_path = dpath.joinpath('outavi')
+    if not outavi_path.exists():
+        outavi_path.mkdir()
+
+    ddir = [x for x in dpath.iterdir() if x.is_dir()]
+    for dd in ddir:  
+        outfile = dd.joinpath('_output.avi')
+        print(outfile)
+        if not outfile.exists():
+            print('no _output.avi')
+            continue
+        dname = dd.name
+        newname = outavi_path.joinpath(dd.name+'_out.avi')
+        print(newname)
+        os.rename(outfile, newname)
 
     
 def video_clip():
@@ -207,7 +224,7 @@ def training():
 def main():
     print('len(sys.argv):', len(sys.argv))
     
-    training()
+    move_outvideo()
 #    generate_feature()
 
 #    
