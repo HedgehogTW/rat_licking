@@ -46,7 +46,7 @@ def move_outvideo():
         if not outfile.exists():
             print('no _output.avi')
             continue
-        dname = dd.name
+
         newname = outavi_path.joinpath(dd.name+'_out.avi')
         print(newname)
         os.rename(outfile, newname)
@@ -195,8 +195,8 @@ def generate_feature():
         mouse.generate_feature(f)
     
 def training():
-    train_lst = ['930219_L','930219_R', '930220_L', '930220_R']
-    test_lst = ['930219_R', '930220_L', '930220_R']
+    train_lst = ['930219_L','930219_R', '930220_L', '930220_R','930221_L', '930221_R']
+    test_lst = ['930221_L', '930221_R']
     
     trpath = pathlib.Path(train_path)    
     fea_list = sorted(trpath.glob('_feature_*.csv'))
@@ -216,7 +216,8 @@ def training():
         mouse = classifier.Classifier()
 #        mouse.train(train_files, test_files)
 #        mouse.separate_train_svm(train_files)
-        mouse.separate_train_random_forest(train_files)
+#        mouse.individual_train_random_forest(train_files)
+        mouse.train_random_forest(train_files, test_files)
     else:
         print('no training file')
  
@@ -224,9 +225,10 @@ def training():
 def main():
     print('len(sys.argv):', len(sys.argv))
     
-    move_outvideo()
+#    move_outvideo()
+    training()
+#    label_training_data(sigma = 1.5)
 #    generate_feature()
-
 #    
 #    try:
 #        opts, args = getopt.getopt(sys.argv[1:], "1234")
@@ -242,7 +244,7 @@ def main():
 #            video_clip();
 #        elif o == '-2':
 #            print('training data labeling...')
-#            label_training_data()
+#            label_training_data(sigma = 1.5)
 #        elif o == '-3':
 #            print('generate_feature...')
 #            generate_feature()

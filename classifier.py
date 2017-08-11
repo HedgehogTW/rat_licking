@@ -220,7 +220,7 @@ class Classifier:
         delta = t2 - t1
         print('    Computation time takes {}'.format(delta))
         
-    def train(self, train_files, test_files):
+    def train_svm(self, train_files, test_files):
         print('read train: ', train_files[0].name, end='  ')
         df_train = pd.read_csv(str(train_files[0]), delimiter=',',index_col=0)
         print(len(df_train))
@@ -290,22 +290,122 @@ class Classifier:
         
 #               self.svm(Xtrain, Xtest, ytrain, ytest)
 
+    def train_random_forest(self, train_files, test_files):
+        # specify parameters and distributions to sample from
+        param_dist = {"max_depth": [3, None],
+                      "max_features": sp_randint(1, 10),
+#                      "min_samples_split": sp_randint(1, 11),
+                      "min_samples_leaf": sp_randint(1, 11),
+                      "bootstrap": [True, False],
+                      "criterion": ["gini", "entropy"]}
+        
+        print('read train: ', train_files[0].name, end=' ')
+        df_train = pd.read_csv(str(train_files[0]), delimiter=',',index_col=0)
+        print(len(df_train), end='  ')
+        for i, tr in enumerate(train_files): 
+            if i==0: continue
+            print(tr.name, end=' ')
+            df = pd.read_csv(str(tr), delimiter=',',index_col=0)
+            print(len(df), end='  ')
+            df_train = df_train.append(df)
+            
+#        print(df_train.head(4))
+    
+        print('\nTotal rec ', len(df_train), ', # of label 1:',df_train['label'].sum(axis = 0))
+              
+        fea_lst = ['p1_mean','p5_mean','p1_var','p5_var',\
+                   'p1n_mean','p5n_mean','p1n_var','p5n_var',\
+                   'cx_var','cy_var']
+#        print('feature:')
+#        print(fea_lst)
+        train_sz = 0.5
+        neg_p = 5
+        print('train_sz {}, neg_prop {}'.format(train_sz, neg_p))
+        if test_files: # has test files
+            Xtrain = np.asarray(df_train.loc[:,fea_lst])
+            ytrain = np.asarray(df_train.loc[:,'label'])  
+#            X1train, Xtest, y1train, ytest = train_test_split(Xtrain, ytrain, \
+#                                                              train_size = tr_sz, random_state=1)
+#            print('train_test_split, # of training ', len(X1train), tr_sz)
+            x_btrain, y_btrain = self.get_balance_data(Xtrain, ytrain, neg_prop=neg_p)
+            cv = StratifiedShuffleSplit(n_splits=2, train_size=train_sz, random_state=0)
+            train_idx, test_idx = next(iter(cv.split(x_btrain, y_btrain)))
+            X1train = x_btrain[train_idx]
+            y1train = y_btrain[train_idx]
+#            x0train = Xtrain [ytrain==0]
+#            x1train = Xtrain [ytrain==1]
+            
+            X1test = x_btrain[test_idx]
+            y1test = y_btrain[test_idx]
+            
+            print('StratifiedShuffleSplit, training/test size: ', len(X1train), len(X1test))
+            
+            clf = RandomForestClassifier(n_estimators=20)
+            # run randomized search
+            n_iter_search = 20
+            random_search = RandomizedSearchCV(clf, param_distributions=param_dist,
+                                               n_iter=n_iter_search, n_jobs=4, 
+                                               scoring = 'recall', random_state=0)
+            
+            random_search.fit(X1train, y1train)
+
+#            print("    RandomizedSearchCV took %.2f seconds for %d candidates"
+#                  " parameter settings." % ((time() - start), n_iter_search))
+#            self.report(random_search.cv_results_)
+
+            y_model = random_search.predict(X1train)  
+            acc = accuracy_score(y1train, y_model)
+            pre = precision_score(y1train, y_model, average='binary')  
+            rec = recall_score(y1train, y_model, average='binary') 
+            print('    RandomForest: train acc {:.3f}, precision {:.3f}, recall(Sensitivity) {:.3f}'.format(acc, pre, rec))
+            mat = confusion_matrix(y1train, y_model)
+            specificity = mat[0,0]/(mat[0,1]+mat[0,0])
+            print('    specificity: {:.3f}'.format(specificity))
+            print(mat) 
+            print('-' *30)
+            
+            for i, testf in enumerate(test_files): 
+                print('read test: ', testf.name, end='  ')
+                df_test = pd.read_csv(str(testf), delimiter=',',index_col=0)
+
+                print(len(df_test), ', # of label 1:',df_test['label'].sum(axis = 0))
+                   
+                Xtest = np.asarray(df_test.loc[:,fea_lst])
+                ytest = np.asarray(df_test.loc[:,'label'])              
+
+                y_model = random_search.predict(Xtest)  
+                acc = accuracy_score(ytest, y_model)
+                pre = precision_score(ytest, y_model, average='binary')  
+                rec = recall_score(ytest, y_model, average='binary') 
+                print('    RandomForest: train acc {:.3f}, precision {:.3f}, recall(Sensitivity) {:.3f}'.format(acc, pre, rec))
+                mat = confusion_matrix(ytest, y_model)
+                specificity = mat[0,0]/(mat[0,1]+mat[0,0])
+                print('    specificity: {:.3f}'.format(specificity))
+                print(mat) 
+                print('-' *20)
+            
+
+
     def get_balance_data(self, x, y, neg_prop):
         xpos = x[y==1]
         ypos = y[y==1]
         xneg = x[y==0]
         yneg = y[y==0]
-        num_pos = int(len(xpos)*neg_prop)
+        num_neg = int(len(xpos)*neg_prop)
         print('original data pos/neg x:', len(xpos), len(xneg))
-
-        X_negtrain, X_test, y_negtrain, y_test = train_test_split(xneg, yneg, train_size=num_pos, random_state=42)        
+        if num_neg > len(xneg):
+            num_neg = len(xneg)
+            
+        X_negtrain, X_test, y_negtrain, y_test = train_test_split(xneg, yneg, 
+                                                                  train_size=num_neg, 
+                                                                  random_state=0)        
         xtrain = np.vstack([xpos, X_negtrain])
         ytrain = np.hstack([ypos, y_negtrain])
 
         print('extract neg train: {}, pos+neg: {}'.format(len(X_negtrain), len(ytrain)))
         return xtrain, ytrain
 
-    def separate_train_svm(self, train_files):
+    def individual_train_svm(self, train_files):
         fea_lst = ['p1_mean','p5_mean','p1_var','p5_var',\
                    'p1n_mean','p5n_mean','p1n_var','p5n_var',\
                    'cx_var','cy_var']
@@ -384,7 +484,7 @@ class Classifier:
                 print("    Parameters: {0}".format(results['params'][candidate]))
                 print("")
         
-    def separate_train_random_forest(self, train_files):
+    def individual_train_random_forest(self, train_files):
         # specify parameters and distributions to sample from
         param_dist = {"max_depth": [3, None],
                       "max_features": sp_randint(1, 10),
@@ -411,6 +511,7 @@ class Classifier:
         print(fea_lst)
 
         for i, tr in enumerate(train_files): 
+            print('='*70)
             print('read train: ', train_files[i].name, end='  ')
             df_train = pd.read_csv(str(train_files[i]), delimiter=',',index_col=0)
             print(len(df_train), ', # of label 1:',df_train['label'].sum(axis = 0))
@@ -431,8 +532,8 @@ class Classifier:
             Xtrain, Xtest, ytrain, ytest = train_test_split(x_btrain, y_btrain, test_size=0.3, random_state=0)
             random_search.fit(Xtrain, ytrain)
             print('    train_test_split, training/test size: ', len(Xtrain), len(Xtest))
-            print("    RandomizedSearchCV took %.2f seconds for %d candidates"
-                  " parameter settings." % ((time() - start), n_iter_search))
+#            print("    RandomizedSearchCV took %.2f seconds for %d candidates"
+#                  " parameter settings." % ((time() - start), n_iter_search))
             self.report(random_search.cv_results_)
 
             y_model = random_search.predict(Xtrain)  
@@ -444,13 +545,13 @@ class Classifier:
             specificity = mat[0,0]/(mat[0,1]+mat[0,0])
             print('    specificity: {:.3f}'.format(specificity))
             print(mat) 
-            print('---------------------')
-            y_model = random_search.predict(Xtest)  
-            acc = accuracy_score(ytest, y_model)
-            pre = precision_score(ytest, y_model, average='binary')  
-            rec = recall_score(ytest, y_model, average='binary') 
+            print('-' *20)
+            y_model = random_search.predict(X)  
+            acc = accuracy_score(y, y_model)
+            pre = precision_score(y, y_model, average='binary')  
+            rec = recall_score(y, y_model, average='binary') 
             print('    RandomForest: test acc {:.3f}, precision {:.3f}, recall(Sensitivity) {:.3f}'.format(acc, pre, rec))
-            mat = confusion_matrix(ytest, y_model)
+            mat = confusion_matrix(y, y_model)
             specificity = mat[0,0]/(mat[0,1]+mat[0,0])
             print('    specificity: {:.3f}'.format(specificity))
             print(mat)  
