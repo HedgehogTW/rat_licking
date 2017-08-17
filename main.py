@@ -195,8 +195,8 @@ def generate_feature():
         mouse.generate_feature(f)
     
 def training():
-    train_lst = ['930219_L','930219_R', '930220_L', '930220_R','930221_L', '930221_R']
-    test_lst = ['930221_L', '930221_R']
+    train_lst = ['930219_L','930219_R', '930220_L', '930220_R']
+    test_lst = [ '930221_L', '930221_R', '930222_L', '930222_R']
     
     trpath = pathlib.Path(train_path)    
     fea_list = sorted(trpath.glob('_feature_*.csv'))
