@@ -3,6 +3,9 @@
 Spyder Editor
 
 This is a temporary script file.
+video_proc.py  目的是分析影片，計算frame difference 以及rat position 等特徵
+先跑這個，有了特徵之後，再跑main.py 根據特徵去切割影片
+
 """
 import shutil
 import os
@@ -33,6 +36,7 @@ fontFace = cv2.FONT_HERSHEY_SIMPLEX
 BG_HISTORY = 500
 fgmask = None
 fgbg = None
+outavi_path = None
 element = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))
 
 def detect_forground(video_filename):
@@ -63,7 +67,7 @@ def detect_forground(video_filename):
 
     cap.release()
 
-def find_rat_center(rat_mask, bandwidth = 1.5):
+def find_rat_center(rat_mask, bandwidth=1.5):
     global frameNum
     y_pos = np.nan
     x_pos = np.nan
@@ -131,11 +135,11 @@ def image_process(mask_bin):
     dilated = cv2.dilate(median, element)
     return dilated
 
-def frame_diff(video_filename, dir_out, mid_line, showVideo=False, bg_subtract=False, writevideo= False):
+def frame_diff(video_filename, dir_out, mid_line, showVideo=False, bg_subtract=False, writevideo=False):
     global fgmask
     global fgbg
     global frameNum
-
+    global outavi_path
 
     cap = cv2.VideoCapture(video_filename)
     bOpenVideo = cap.isOpened()
@@ -401,8 +405,8 @@ def process_folder(dpath, outpath):
     if not outpath.exists():
         outpath.mkdir()
         
-    video_list = sorted(dpath.glob('*.mkv'))
-    vlist = [i for i in video_list if 'car' in str(i)]
+    video_list = sorted(dpath.glob('*.mkv')) #只抓*.mkv
+    vlist = [i for i in video_list if 'car' in str(i)] #只抓car 系列的影片，可修改程式抓其他系列
     num_files = len(vlist)
     for i in range(num_files) :
         fname = vlist[i].name
@@ -427,7 +431,7 @@ def process_folder(dpath, outpath):
         
 video_path = None 
 out_path = None 
-outavi_path = None
+
 if _platform == "linux" or _platform == "linux2": # linux
    video_path = '/home/cclee/image_data/'
    out_path = '/home/cclee/tmp/'
@@ -440,6 +444,8 @@ elif _platform == "win32": # Windows
        
 ratavi = ['ratavi_1', 'ratavi_2','ratavi_3']
 def main():
+    global outavi_path
+
     print('len(sys.argv):', len(sys.argv))
     print ('opencv version ', cv2.__version__)
     outpath = pathlib.Path(out_path)
@@ -451,7 +457,7 @@ def main():
     if not outavi_path.exists():
         outavi_path.mkdir()
 
-
+    print('outavi_path: ', outavi_path)
     try:
         opts, args = getopt.getopt(sys.argv[1:], "123a")
     except getopt.GetoptError as err:
